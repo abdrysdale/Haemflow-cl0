@@ -1,0 +1,14 @@
+name = "full_tree_lumped"
+version = "0.1.0"
+license = "license"
+author = "Alex Drysdale"
+maintainer = "reissuecardboard@duck.com"
+copyright = "Copyright 2022, Alex Drysdale"
+[build]
+auto-executables = true
+auto-tests = false
+auto-examples = true
+[install]
+library = false
+[dependencies]
+toml-f.git = "https://github.com/toml-f/toml-f"
