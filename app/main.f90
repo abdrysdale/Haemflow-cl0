@@ -30,12 +30,14 @@ program main
     type (arterial_system) :: sys
     type (arterial_system) :: pulm
     type (chamber) :: LV, LA, RV, RA
+    real(dp) :: t1, t2, t3, t4
 
     ! Declares the namelists
     namelist /INPUTS/ nstep, T, ncycle, pini_sys, pini_pulm, rk
     namelist /VALVES/ AV, MV, PV, TV
     namelist /ARTERIES/ scale_Rsys, scale_Csys, scale_Rpulm, scale_Cpulm, rho, sys, pulm
     namelist /HEART/ scale_EmaxLV, scale_EmaxRV, scale_Emax, LV, LA, RV, RA
+    namelist /ECG/ t1, t2, t3, t4
 
     !!! Initialisation !!!
     ! Defines initial variables
@@ -45,6 +47,7 @@ program main
     read(nml=VALVES, unit=io)
     read(nml=ARTERIES, unit=io)
     read(nml=HEART, unit=io)
+    read(nml=ECG, unit=io)
     close(io)
 
     headers = [ character(len=50) :: 'Aortic Valve Flow', &
@@ -74,7 +77,7 @@ program main
     a_cof = arterial_network(sys, pulm, rho)
 
     ! Relevant heart coefficients
-    call heart_input(LV, LA, RV, RA, T, scale_EmaxLV, scale_EmaxRV, scale_Emax)
+    call heart_input(LV, LA, RV, RA, scale_EmaxLV, scale_EmaxRV, scale_Emax)
     h_cof = chambers(LV, LA, RV, RA)
 
     ! Relevant valve coefficients
@@ -93,10 +96,14 @@ program main
     allocate(ELA(nstep))
     allocate(ERV(nstep))
     allocate(ERA(nstep))
-    ELV = calc_elastance(h_cof%LV, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .false.)
-    ELA = calc_elastance(h_cof%LA, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .true.)
-    ERV = calc_elastance(h_cof%RV, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .false.)
-    ERA = calc_elastance(h_cof%RA, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .true.)
+    ! t1 is the time of the P peak
+    ! t2 is the time of the R peak
+    ! t3 is the time of the T peak
+    ! t4 is the time of the end of the T wave (also called T offset)
+    ELV = calc_elastance(h_cof%LV, t_axis, t1, t2, t3, t4, is_atria=.false.)
+    ELA = calc_elastance(h_cof%LA, t_axis, t1, t2, t3, t4, is_atria=.true.)
+    ERV = calc_elastance(h_cof%RV, t_axis, t1, t2, t3, t4, is_atria=.false.)
+    ERA = calc_elastance(h_cof%RA, t_axis, t1, t2, t3, t4, is_atria=.true.)
 
     ! Saves the heart information at the points
     elast = heart_elastance(ELV=ELV, ELA=ELA, ERV=ERV, ERA=ERA)

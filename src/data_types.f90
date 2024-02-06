@@ -11,17 +11,11 @@ module data_types
 
     ! Declares the type for each chamber
     type :: chamber
-        real(dp) :: Ks
         real(dp) :: Emin
         real(dp) :: Emax
         real(dp) :: V0_1
         real(dp) :: V0_2
-        real(dp) :: m1
-        real(dp) :: m2
-        real(dp) :: tau1
-        real(dp) :: tau2
-        real(dp) :: onset
-    end type
+    end type chamber
 
     ! Declares the type for all 4 heart chambers
     type :: chambers
@@ -29,7 +23,7 @@ module data_types
         type (chamber) :: LA
         type (chamber) :: RV
         type (chamber) :: RA
-    end type
+     end type chambers
 
     ! Declare artery system
     type :: arterial_system
@@ -43,14 +37,14 @@ module data_types
         real(dp) :: Cvn
         real(dp) :: Las
         real(dp) :: Lat
-    end type
+     end type arterial_system
 
     ! Declares the complete network
     type :: arterial_network
         type (arterial_system) :: sys
         type (arterial_system) :: pulm
         real(dp) :: rho
-    end type
+     end type arterial_network
 
     ! Declares the valve type
     type :: valve
@@ -59,7 +53,7 @@ module data_types
         real(dp) :: Aeffmax
         real(dp) :: Kvc
         real(dp) :: Kvo
-    end type
+     end type valve
 
     ! Declares a system of valves
     type :: valve_system
@@ -67,7 +61,7 @@ module data_types
         type (valve) :: MV ! Mitral
         type (valve) :: PV ! Pulmonary
         type (valve) :: TV ! Tricuspid
-    end type
+     end type valve_system
 
     ! Declares the heart elastance type
     type :: heart_elastance
@@ -75,6 +69,6 @@ module data_types
         real(dp), allocatable :: ELA(:)
         real(dp), allocatable :: ERV(:)
         real(dp), allocatable :: ERA(:)
-    end type
+     end type heart_elastance
 
 end module data_types

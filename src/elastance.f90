@@ -86,12 +86,10 @@ contains
         ! Declares intermediate variables
         real(dp), parameter :: pi=4.D0*datan(1.D0)
 
-        E_out = cham%Emin * (cham%Emax - cham%Emin)
-
         if (is_atria) then
-           E_out = E_out * atria_act(t, T1, T2)
+           E_out = cham%Emin + (cham%Emax - cham%Emin) * atria_act(t, T1, T2)
         else
-           E_out = E_out * ventrical_act(t, T2, T3, T4)
+           E_out = cham%Emin + (cham%Emax - cham%Emin) * ventrical_act(t, T2, T3, T4)
         end if
     end function calc_elastance
 end module elastance
