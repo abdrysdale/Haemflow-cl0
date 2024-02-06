@@ -28,11 +28,16 @@ contains
         g2_2 = 1 / ( 1 + g2_1)
     end function calc_g2
 
+    ! Atria elastance activation functions taken from:
+    ! J. D. Thomas, J. Zhou, N. Greenberg, G. Bibawy, P. M. McCarthy, and P. M. Vandervoort, 
+    ! “Physical and physiological determinants of pulmonary venous flow: Numerical analysis,” 
+    ! Amer. J. Physiol. Heart Circ. Physiol., vol. 272, no. 5, pp. H2453–H2465, 1997.
     elemental function atria_act(t, T1, T2) result(u_a)
       real(dp), intent(in) :: t
       real(dp), intent(in) :: T1
       real(dp), intent(in) :: T2
-      real(dp), intent(out) :: u_a
+      real(dp) :: u_a
+      real(dp), parameter :: pi=4.D0*datan(1.D0)
 
       if ( (T1 <= t) .and. (t <= T2) ) then
          u_a = 0.5 * (1 - cos((2*pi*(t - T1))/(T2 - T1)))
@@ -41,12 +46,17 @@ contains
       end if
     end function atria_act
 
+    ! Ventrical elastance activation functions taken from:
+    ! D. C. Chung, S. C. Niranjan, J. W. Clark, A. Bidani, W. E. Johnston, J. B. Zwischenberger, and D. L. Traber, 
+    ! “A dynamic model of ventricular interaction and pericardial influence,”
+    ! Amer. J. Physiol. Heart Circ. Physiol., vol. 272, no. 6, pp. H2942–H2962, Jun. 1, 1997.
     elemental function ventrical_act(t, T2, T3, T4) result(u_v)
       real(dp), intent(in) :: t
       real(dp), intent(in) :: T2
       real(dp), intent(in) :: T3
       real(dp), intent(in) :: T4
-      real(dp), intent(out) :: u_v
+      real(dp) :: u_v
+      real(dp), parameter :: pi=4.D0*datan(1.D0)
 
       if ( (T2 <= t) .and. (t < T3) ) then
          u_v = 0.5 * (1 - cos((pi*(t - T2))/(T3 - T2)))
@@ -59,61 +69,29 @@ contains
     end function ventrical_act
 
     ! Calculates the elastance of the heart
-    pure function calc_elastance(LV, nstep, T, E_t) result(E_out)
+    elemental function calc_elastance(cham, t, T1, T2, T3, T4, is_atria) result(E_out)
 
         ! Declares input variables
-        type(chamber), intent(in) :: LV
-        integer, intent(in) :: nstep
-        real(dp), intent(in) :: T
-        real(dp), intent(in) :: E_t(nstep)
+        type(chamber), intent(in) :: cham
+        real(dp), intent(in) :: T1
+        real(dp), intent(in) :: T2
+        real(dp), intent(in) :: T3
+        real(dp), intent(in) :: T4
+        real(dp), intent(in) :: t
+        logical, intent(in) :: is_atria
 
         ! Declares output variable
-        real(dp), dimension(nstep) :: E_out
+        real(dp) :: E_out
 
         ! Declares intermediate variables
-        real(dp), dimension(nstep) :: E_tmp
-        integer :: i, t_idx
-        real(dp), dimension(nstep) :: q
-        real(dp), dimension(nstep - 1) :: dt
-        real(dp), dimension(nstep) :: v
-        real(dp), dimension(nstep) :: g1_1 ! g1 in MATLAB
-        real(dp), dimension(nstep) :: g2_1
-        real(dp), dimension(nstep) :: g1_2 ! G1 in MATLAB
-        real(dp), dimension(nstep) :: g2_2
-        real(dp), dimension(nstep) :: g12_prod
-        real(dp) :: k
-        real(dp), dimension(nstep) :: p_tmp
-        real(dp), dimension(nstep) :: p
         real(dp), parameter :: pi=4.D0*datan(1.D0)
 
-        ! Initialise output
-        E_out = 0
+        E_out = cham%Emin * (cham%Emax - cham%Emin)
 
-        ! Defines variables
-        q = sin(2 * pi * E_t / ( 2 * T))
-        do i = 1, nstep - 1
-            dt(i) = E_t(i + 1) - E_t(i)
-        end do
-        v(1) = LV%V0_2
-        v(2:) = LV%V0_2 - q(2:) * dt
-
-        g1_1 = (E_t / (LV%tau1 * T)) ** LV%m1
-        g2_1 = (E_t / (LV%tau2 * T)) ** LV%m2
-        g1_2 = calc_g1(g1_1)
-        g2_2 = calc_g2(g2_1)
-        g12_prod = mult(g1_2, g2_2)
-        k = (LV%Emax - LV%Emin) / maxval(g12_prod)
-
-        E_tmp = (k * g12_prod) + LV%Emin
-        p_tmp = mult(E_tmp, (v - LV%V0_1))
-        p = mult(p_tmp, (1 - LV%Ks * q))
-
-        t_idx = count(E_t <= T - LV%onset)
-        if ( t_idx == nstep ) then
-            E_out = E_tmp
+        if (is_atria) then
+           E_out = E_out * atria_act(t, T1, T2)
         else
-            E_out(1:nstep-t_idx) = E_tmp(t_idx+1:)
-            E_out(1 + nstep-t_idx:) = E_tmp(:t_idx) 
+           E_out = E_out * ventrical_act(t, T2, T3, T4)
         end if
     end function calc_elastance
 end module elastance

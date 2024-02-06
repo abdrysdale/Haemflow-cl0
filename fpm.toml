@@ -1,4 +1,4 @@
-name = "full_tree_lumped"
+name = "closed-loop-0D"
 version = "0.1.0"
 license = "license"
 author = "Alex Drysdale"

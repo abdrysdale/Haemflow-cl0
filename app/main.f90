@@ -93,10 +93,10 @@ program main
     allocate(ELA(nstep))
     allocate(ERV(nstep))
     allocate(ERA(nstep))
-    ELV = calc_elastance(h_cof%LV, nstep, T, t_axis)
-    ELA = calc_elastance(h_cof%LA, nstep, T, t_axis)
-    ERV = calc_elastance(h_cof%RV, nstep, T, t_axis)
-    ERA = calc_elastance(h_cof%RA, nstep, T, t_axis)
+    ELV = calc_elastance(h_cof%LV, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .false.)
+    ELA = calc_elastance(h_cof%LA, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .true.)
+    ERV = calc_elastance(h_cof%RV, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .false.)
+    ERA = calc_elastance(h_cof%RA, t_axis, 0.0_dp, 0.142_dp, 0.462_dp, 0.522_dp, .true.)
 
     ! Saves the heart information at the points
     elast = heart_elastance(ELV=ELV, ELA=ELA, ERV=ERV, ERA=ERA)
