@@ -28,6 +28,36 @@ contains
         g2_2 = 1 / ( 1 + g2_1)
     end function calc_g2
 
+    elemental function atria_act(t, T1, T2) result(u_a)
+      real(dp), intent(in) :: t
+      real(dp), intent(in) :: T1
+      real(dp), intent(in) :: T2
+      real(dp), intent(out) :: u_a
+
+      if ( (T1 <= t) .and. (t <= T2) ) then
+         u_a = 0.5 * (1 - cos((2*pi*(t - T1))/(T2 - T1)))
+      else
+         u_a = 0
+      end if
+    end function atria_act
+
+    elemental function ventrical_act(t, T2, T3, T4) result(u_v)
+      real(dp), intent(in) :: t
+      real(dp), intent(in) :: T2
+      real(dp), intent(in) :: T3
+      real(dp), intent(in) :: T4
+      real(dp), intent(out) :: u_v
+
+      if ( (T2 <= t) .and. (t < T3) ) then
+         u_v = 0.5 * (1 - cos((pi*(t - T2))/(T3 - T2)))
+      else if ( (T3 <= t) .and. (t <= T4) ) then
+         u_v = 0.5 * (1 + cos((pi*(t - T3))/(T4 - T3)))
+      else
+         u_v = 0
+      end if
+
+    end function ventrical_act
+
     ! Calculates the elastance of the heart
     pure function calc_elastance(LV, nstep, T, E_t) result(E_out)
 
