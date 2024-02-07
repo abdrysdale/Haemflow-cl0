@@ -49,7 +49,7 @@ def load_defaults():
     }
 
     right_ventrical = {
-        "emin": 0.15,
+        "emin": 0.1,
         "emax": 0.92,
         "vmin": 55,
         "vmax": 180,
