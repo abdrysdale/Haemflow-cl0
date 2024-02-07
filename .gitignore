@@ -1,1 +1,4 @@
 *.~undo-tree~
+*.o
+*.mod
+/closed_loop_lumped
