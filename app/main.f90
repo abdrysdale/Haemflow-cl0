@@ -13,13 +13,8 @@ program main
     type (arterial_network) :: a_cof
     type (chambers) :: h_cof
     type (valve) :: AV, MV, PV, TV
-    type (valve_system) :: v_cof
     real(dp), allocatable, dimension(:) :: ELV, ELA, ERV, ERA
-    type (heart_elastance) :: elast, elast_half
-    real(dp) :: current_sol(22)
     real(dp), allocatable :: sol(:, :)
-    real(dp), allocatable :: t_axis(:)
-    real(dp), dimension(22) :: k1, k2, k3, k4
     character(len=50), dimension(31) :: headers
     real(dp) :: scale_Rsys, scale_Csys, scale_Rpulm, scale_Cpulm
     real(dp) :: scale_Emax, scale_EmaxLV, scale_EmaxRV
@@ -116,6 +111,7 @@ program main
         print *, '% Inf values:', 100.0_dp * inf_count / size(sol)
     else
         print *, 'Converged!'
+        print *, 'Number of cycles:', ncycle
         print *, 'Mean value:', sum(sol) / size(sol)
     end if
 end program main

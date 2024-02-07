@@ -11,32 +11,32 @@ module data_types
 
     ! Declares the type for each chamber
     type :: chamber
-        real(dp) :: Emin
-        real(dp) :: Emax
-        real(dp) :: V0_1
-        real(dp) :: V0_2
+        real(dp) :: Emin ! Minimum elastance
+        real(dp) :: Emax ! Maximum elstance
+        real(dp) :: V0_1 ! Minimum volume
+        real(dp) :: V0_2 ! Maximum volume
     end type chamber
 
     ! Declares the type for all 4 heart chambers
     type :: chambers
-        type (chamber) :: LV
-        type (chamber) :: LA
-        type (chamber) :: RV
-        type (chamber) :: RA
+        type (chamber) :: LV ! Left ventrical
+        type (chamber) :: LA ! Left atrium
+        type (chamber) :: RV ! Right ventrical
+        type (chamber) :: RA ! Right atrium
      end type chambers
 
     ! Declare artery system
     type :: arterial_system
-        real(dp) :: Ras
-        real(dp) :: Rat
-        real(dp) :: Rar
-        real(dp) :: Rcp
-        real(dp) :: Rvn
-        real(dp) :: Cas
-        real(dp) :: Cat
-        real(dp) :: Cvn
-        real(dp) :: Las
-        real(dp) :: Lat
+        real(dp) :: Ras ! Aortic (or Pulmonary Artery) Sinus Resistance
+        real(dp) :: Rat ! Artery Resistance
+        real(dp) :: Rar ! Arterioles Resistance
+        real(dp) :: Rcp ! Capillary Resistance
+        real(dp) :: Rvn ! Vein Resistance
+        real(dp) :: Cas ! Aortic Sinus Compliance
+        real(dp) :: Cat ! Artery Compliance
+        real(dp) :: Cvn ! Vein Compliance
+        real(dp) :: Las ! Aortic Sinus Inductance
+        real(dp) :: Lat ! Artery Inductance
      end type arterial_system
 
     ! Declares the complete network
@@ -48,11 +48,11 @@ module data_types
 
     ! Declares the valve type
     type :: valve
-        real(dp) :: Leff ! cm
-        real(dp) :: Aeffmin
-        real(dp) :: Aeffmax
-        real(dp) :: Kvc
-        real(dp) :: Kvo
+        real(dp) :: Leff ! Effective inductance of the valve.
+        real(dp) :: Aeffmin ! Minimum effective area of the valve.
+        real(dp) :: Aeffmax ! Maximum effective area of the valve.
+        real(dp) :: Kvc ! Valve closing parameter
+        real(dp) :: Kvo ! Valve opening parameter
      end type valve
 
     ! Declares a system of valves
@@ -65,10 +65,10 @@ module data_types
 
     ! Declares the heart elastance type
     type :: heart_elastance
-        real(dp), allocatable :: ELV(:)
-        real(dp), allocatable :: ELA(:)
-        real(dp), allocatable :: ERV(:)
-        real(dp), allocatable :: ERA(:)
+        real(dp), allocatable :: ELV(:) ! Elastance curve for the left ventrical
+        real(dp), allocatable :: ELA(:) ! Elastance curve for the left atrium
+        real(dp), allocatable :: ERV(:) ! Elastance curve for the right ventrical
+        real(dp), allocatable :: ERA(:) ! Elastance curve for the right atrium
      end type heart_elastance
 
 end module data_types
