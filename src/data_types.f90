@@ -32,10 +32,10 @@ module data_types
         real(dp) :: Rar ! Arterioles Resistance
         real(dp) :: Rcp ! Capillary Resistance
         real(dp) :: Rvn ! Vein Resistance
-        real(dp) :: Cas ! Aortic Sinus Compliance
+        real(dp) :: Cas ! Aortic Sinus (or Pulmonary Artery) Compliance
         real(dp) :: Cat ! Artery Compliance
         real(dp) :: Cvn ! Vein Compliance
-        real(dp) :: Las ! Aortic Sinus Inductance
+        real(dp) :: Las ! Aortic Sinus (or Pulmonary Artery) Inductance
         real(dp) :: Lat ! Artery Inductance
      end type arterial_system
 

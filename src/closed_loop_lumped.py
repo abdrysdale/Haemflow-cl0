@@ -20,25 +20,25 @@ def load_defaults():
     """Loads all of the default dictionaries for solving the system."""
 
     generic_params = {
-        "nstep": 2000,
-        "period": 0.9,
-        "ncycle": 10,
-        "rk": 4,
-        "rho": 1.06,
+        "nstep": 2000,  # Number of time steps.
+        "period": 0.9,  # Cardiac period.
+        "ncycle": 10,   # Number of cardiac cycles.
+        "rk": 4,        # Runge-Kutta order (2 or 4).
+        "rho": 1.06,    # Density of blood.
     }
 
     ecg = {
-        "t1": 0,
-        "t2": 0.142,
-        "t3": 0.462,
-        "t4": 0.522,
+        "t1": 0,        # Time of P wave peak.
+        "t2": 0.142,    # Time of R wave peak.
+        "t3": 0.462,    # Time of T wave peak.
+        "t4": 0.522,    # Time of end of T wave.
     }
 
     left_ventrical = {
-        "emin": 0.1,
-        "emax": 0.5,
-        "vmin": 10,
-        "vmax": 135,
+        "emin": 0.1,    # Minimum elastance.
+        "emax": 0.5,    # Maximum elastance.
+        "vmin": 10,     # Minimum volume.
+        "vmax": 135,    # Maximum volume.
     }
 
     left_atrium = {
@@ -63,43 +63,43 @@ def load_defaults():
     }
 
     systemic = {
-        "pini": 80,
-        "scale_R": 0.7,
-        "scale_C": 0.8,
-        "ras": 0.003,
-        "rat": 0.05,
-        "rar": 0.5,
-        "rcp": 0.52,
-        "rvn": 0.075,
-        "cas": 0.008,
-        "cat": 1.6,
-        "cvn": 20.5,
-        "las": 6.2e-5,
-        "lat": 1.7e-3,
+        "pini": 80,             # Initial pressure.
+        "scale_R": 0.7,         # Resistance scaling term.
+        "scale_C": 0.8,         # Compliance scaling term.
+        "ras": 0.003,           # Aortic sinus resistance.
+        "rat": 0.05,            # Artery resistance.
+        "rar": 0.5,             # Arterioes resistance.
+        "rcp": 0.52,            # Capillary resistance.
+        "rvn": 0.075,           # Venous resistance.
+        "cas": 0.008,           # Aortic sinus resistance.
+        "cat": 1.6,             # Artery compliance.
+        "cvn": 20.5,            # Venous compliance.
+        "las": 6.2e-5,          # Aortic sinus inductance.
+        "lat": 1.7e-3,          # Artery Inductance.
     }
 
     pulmonary = {
-        "pini": 20,
-        "scale_R": 1,
-        "scale_C": 1,
-        "ras": 0.002,
-        "rat": 0.01,
-        "rar": 0.05,
-        "rcp": 0.25,
-        "rvn": 0.006,
-        "cas": 0.18,
-        "cat": 3.8,
-        "cvn": 20.5,
-        "las": 5.2e-5,
-        "lat": 1.7e-3,
+        "pini": 20,             # Initial pressure.
+        "scale_R": 1,           # Resistance scaling term.
+        "scale_C": 1,           # Compliance scaling term.
+        "ras": 0.002,           # Pulmonary artery resistance.
+        "rat": 0.01,            # Artery resistance.
+        "rar": 0.05,            # Arterioes resistance.
+        "rcp": 0.25,            # Capillary resistance.
+        "rvn": 0.006,           # Venous resistance.
+        "cas": 0.18,            # Pulmonary artery resistance.
+        "cat": 3.8,             # Artery compliance.
+        "cvn": 20.5,            # Venous compliance.
+        "las": 5.2e-5,          # Pulmonary artery inductance.
+        "lat": 1.7e-3,          # Artery Inductance.
     }
 
     aortic_valve = {
-        "leff": 1,
-        "aeffmin": 1e-10,
-        "aeffmax": 2,
-        "kvc": 0.012,
-        "kvo": 0.012,
+        "leff": 1,              # Effective inductance of the valve.
+        "aeffmin": 1e-10,       # Minimum effective area of the valve.
+        "aeffmax": 2,           # Maximum effective area of the valve.
+        "kvc": 0.012,           # Valve closing paramater.
+        "kvo": 0.012,           # Valve opening parameter.
     }
 
     mitral_valve = {
@@ -205,6 +205,9 @@ def solve_system(
         'leff' (effective inductance), 'aeffmin' (minimum effective area),
         'aeffmax' (maximum effective area), 'kvc' (valve closing parameter),
         'kvo' (valve opening parameter).
+
+    Returns:
+        sol (dict) : A dictionary of all of the solutions for system.
     """
 
     ###############
@@ -379,7 +382,41 @@ def solve_system(
         sol_out.ctypes.data_as(ct.POINTER(ct.c_double)),
     )
 
-    return sol_out
+    sol = {
+        'Aortic Valve Flow': sol_out[0, :],
+        'Sinus Flow': sol_out[1, :],
+        'Aortic Flow': sol_out[2, :],
+        'Tricuspid Valve Flow': sol_out[3, :],
+        'Pulmonary Valve Flow': sol_out[4, :],
+        'Arterial Flow': sol_out[5, :],
+        'Aterioles Flow': sol_out[6, :],
+        'Mitral Valve Flow': sol_out[7, :],
+        'Systemic Sinus Pressure': sol_out[8, :],
+        'Systemic Artery Pressure': sol_out[9, :],
+        'Systemic Venous Pressure': sol_out[10, :],
+        'Pulmonary Sinus Pressure': sol_out[11, :],
+        'Pulmonary Artery Pressure': sol_out[12, :],
+        'Pulmonary Venous Pressure': sol_out[13, :],
+        'Left Ventricular Volume': sol_out[14, :],
+        'Left Atrial Volume': sol_out[15, :],
+        'Right Ventricular Volume': sol_out[16, :],
+        'Right Atrial Volume': sol_out[17, :],
+        'Aortic Valve Status': sol_out[18, :],
+        'Mitral Valve Status': sol_out[19, :],
+        'Pulmonary Valve Status': sol_out[20, :],
+        'Tricuspid Valve Status': sol_out[21, :],
+        'Left Ventricular Pressure': sol_out[22, :],
+        'Left Atrial Pressure': sol_out[23, :],
+        'Right Ventricular Pressure': sol_out[24, :],
+        'Right Atrial Pressure': sol_out[25, :],
+        'Left Ventricular Elastance': sol_out[26, :],
+        'Left Atrial Elastance': sol_out[27, :],
+        'Right Ventricular Elastance': sol_out[28, :],
+        'Right Atrial Elastance': sol_out[29, :],
+        'Time (s)': sol_out[30, :],
+    }
+
+    return sol
 
 
 if __name__ == "__main__":
