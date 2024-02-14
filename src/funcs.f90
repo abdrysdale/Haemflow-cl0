@@ -5,6 +5,7 @@ module funcs
     use inputs
     use cust_fns
     use elastance
+    use thermoregulation
     implicit none
 
     private
@@ -14,7 +15,7 @@ module funcs
 contains
 
     ! Solves the system
-    pure function solver(sol, a_cof, v_cof, h_cof, elast, k) result(ftot)
+    pure function solver(sol, a_cof, v_cof, h_cof, elast, therm, k) result(ftot)
 
         ! Declare input variables
         real(dp), dimension(22), intent(in) :: sol
@@ -22,6 +23,7 @@ contains
         type (valve_system), intent(in) :: v_cof
         type (chambers), intent(in) :: h_cof
         type (heart_elastance), intent(in) :: elast
+        type (thermal_system), intent(in) :: therm
         integer, intent(in) :: k
 
         real(dp), dimension(22) :: ftot
@@ -35,6 +37,7 @@ contains
         real(dp), dimension(4) :: B
         real(dp), dimension(4) :: Z
         real(dp) :: dpav, dpmv, dppv, dptv
+        real(dp) :: R_scp
 
         ! Initialises ftot to be zero
         ftot = 0.0_dp
@@ -83,7 +86,10 @@ contains
 
         ! Inductance and resistance systemic 
         ftot(2) = (psas - psat - a_cof%sys%Ras * Qsas) / a_cof%sys%Las
-        ftot(3) = (psat - psvn - (a_cof%sys%Rat + a_cof%sys%Rar + a_cof%sys%Rcp)* Qsat) / a_cof%sys%Lat
+
+        ! Updates capillary resistance based on thermal model
+        R_scp = calc_r_sk(a_cof%sys%Rcp, Qsat, therm)
+        ftot(3) = (psat - psvn - (a_cof%sys%Rat + a_cof%sys%Rar + R_scp)* Qsat) / a_cof%sys%Lat
         Qsvn = (psvn  - pra) / a_cof%sys%Rvn
 
         ! Inductance and resistance pulmonary
@@ -200,7 +206,8 @@ contains
          t1, &
          t2, &
          t3, &
-         t4) result (soln_all)
+         t4, &
+         therm) result (soln_all)
          
       ! Declares input variables
       integer, intent(in) :: nstep, ncycle, rk
@@ -210,6 +217,7 @@ contains
       real(dp), intent(in) :: t1, t2, t3, t4
       type (arterial_system), intent(in) :: sys_in, pulm_in
       type (chamber), intent(in) :: LV_in, LA_in, RV_in, RA_in
+      type (thermal_system), intent(in) :: therm
 
       ! Declare temp variables
       integer :: i, icycle, k, offset
@@ -219,7 +227,7 @@ contains
       type (arterial_system) :: sys, pulm
       type (arterial_network) :: a_cof
       type (chambers) :: h_cof
-      type (valve), intent(in) :: AV, MV, PV, TV
+      type (valve) :: AV, MV, PV, TV
       type (valve_system) :: v_cof
       real(dp), allocatable, dimension(:) :: ELV, ELA, ERV, ERA
       type (heart_elastance) :: elast, elast_half
@@ -323,17 +331,17 @@ contains
             i = i + 1
             current_sol = sol(:, i)
             if (rk == 2) then ! Second order Runge-Kutta
-               k1 = h * solver(current_sol, a_cof, v_cof, h_cof, elast, k)
-               k2 = h * solver(current_sol + k1/2, a_cof, v_cof, h_cof, elast, k)
+               k1 = h * solver(current_sol, a_cof, v_cof, h_cof, elast, therm, k)
+               k2 = h * solver(current_sol + k1/2, a_cof, v_cof, h_cof, elast, therm, k)
                sol(:, i+1) = current_sol + k2
             else if (rk == 4) then ! Fourth order Runge-Kutta
-               k1 = h * solver(current_sol, a_cof, v_cof, h_cof, elast, k)
-               k2 = h * solver(current_sol + k1/2, a_cof, v_cof, h_cof, elast, k)
-               k3 = h * solver(current_sol + k2/2, a_cof, v_cof, h_cof, elast, k)
+               k1 = h * solver(current_sol, a_cof, v_cof, h_cof, elast, therm, k)
+               k2 = h * solver(current_sol + k1/2, a_cof, v_cof, h_cof, elast, therm, k)
+               k3 = h * solver(current_sol + k2/2, a_cof, v_cof, h_cof, elast, therm, k)
                if ( k /= nstep ) then
-                  k4 = h * solver(current_sol + k3, a_cof, v_cof, h_cof, elast, k+1)
+                  k4 = h * solver(current_sol + k3, a_cof, v_cof, h_cof, elast, therm, k+1)
                else
-                  k4 = h * solver(current_sol + k3, a_cof, v_cof, h_cof, elast, 1)
+                  k4 = h * solver(current_sol + k3, a_cof, v_cof, h_cof, elast, therm, 1)
                end if
                sol(:, i + 1) = current_sol + (k1 + 2 * k2 + 2 * k3 + k4) / 6
             end if

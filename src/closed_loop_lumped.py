@@ -126,6 +126,15 @@ def load_defaults():
         "kvo": 0.04,
     }
 
+    thermal_system = {
+        "k_dil": 75,            # Coefficient of vasodilation
+        "t_cr": 36.8,           # Core temperature
+        "t_cr_ref": 36.8,       # Core temperature under neutral conditions
+        "k_con": 0.5,           # Coefficient of vasoconstriction
+        "t_sk": 34.1,           # Skin temperature
+        "t_sk_ref": 34.1,        # Skin temperature under neutral conditions
+    }
+
     defaults = {
         "generic_params": generic_params,
         "ecg": ecg,
@@ -139,6 +148,7 @@ def load_defaults():
         "mitral_valve": mitral_valve,
         "pulmonary_valve": pulmonary_valve,
         "tricuspid_valve": tricuspid_valve,
+        "thermal_system": thermal_system,
     }
 
     return defaults
@@ -157,6 +167,7 @@ def solve_system(
         mitral_valve=None,
         pulmonary_valve=None,
         tricuspid_valve=None,
+        thermal_system=None,
 ):
     """Solves the lumped parameter closed loop system.
 
@@ -205,7 +216,11 @@ def solve_system(
         'leff' (effective inductance), 'aeffmin' (minimum effective area),
         'aeffmax' (maximum effective area), 'kvc' (valve closing parameter),
         'kvo' (valve opening parameter).
-
+    thermal_system (dict, optional) : A dictionary containing:
+        'k_dil' (vasodilation coefficient), 't_cr' (core temperature),
+        't_cr_ref' (core temperature under neutral conditions),
+        'k_con' (vasoconstriction coefficient), 't_sk' (skin temperature),
+        't_sk_ref' (skin temperature under neutral condtions).
     Returns:
         sol (dict) : A dictionary of all of the solutions for system.
     """
@@ -226,6 +241,7 @@ def solve_system(
         "mitral_valve": mitral_valve,
         "pulmonary_valve": pulmonary_valve,
         "tricuspid_valve": tricuspid_valve,
+        "thermal_system": thermal_system,
     }
 
     # Checks all input parameters, if a parameter is missing, load the default
@@ -352,6 +368,14 @@ def solve_system(
     t3 = ct.c_double(inputs["ecg"]["t3"])
     t4 = ct.c_double(inputs["ecg"]["t4"])
 
+    # Thermal system
+    k_dil = ct.c_double(inputs["thermal_system"]["k_dil"])
+    t_cr = ct.c_double(inputs["thermal_system"]["t_cr"])
+    t_cr_ref = ct.c_double(inputs["thermal_system"]["t_cr_ref"])
+    k_con = ct.c_double(inputs["thermal_system"]["k_con"])
+    t_sk = ct.c_double(inputs["thermal_system"]["t_sk"])
+    t_sk_ref = ct.c_double(inputs["thermal_system"]["t_sk_ref"])
+
     # Solution
     sol_out = np.zeros(
         (31, inputs["generic_params"]["nstep"]),
@@ -379,6 +403,7 @@ def solve_system(
         pv_leff, pv_aeffmin, pv_aeffmax, pv_kvc, pv_kvo,
         tv_leff, tv_aeffmin, tv_aeffmax, tv_kvc, tv_kvo,
         t1, t2, t3, t4,
+        k_dil, t_cr, t_cr_ref, k_con, t_sk, t_sk_ref,
         sol_out.ctypes.data_as(ct.POINTER(ct.c_double)),
     )
 
@@ -421,4 +446,4 @@ def solve_system(
 
 if __name__ == "__main__":
     sol = solve_system()
-    print(np.mean(sol))
+    print(np.mean(sol["Aortic Valve Flow"]))

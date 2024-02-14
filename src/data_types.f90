@@ -8,6 +8,7 @@ module data_types
     public arterial_system, arterial_network
     public valve, valve_system
     public heart_elastance
+    public thermal_system
 
     ! Declares the type for each chamber
     type :: chamber
@@ -70,5 +71,14 @@ module data_types
         real(dp), allocatable :: ERV(:) ! Elastance curve for the right ventrical
         real(dp), allocatable :: ERA(:) ! Elastance curve for the right atrium
      end type heart_elastance
+
+     type :: thermal_system
+        real(dp) :: k_dil       ! Coefficient of vasodilation
+        real(dp) :: T_cr        ! Core temperature
+        real(dp) :: T_cr_ref    ! Core temperature at neutral conditions
+        real(dp) :: k_con       ! Coefficient of vasoconstriction
+        real(dp) :: T_sk        ! Skin temperature
+        real(dp) :: T_sk_ref    ! Skin temperature at neutral condtions
+     end type thermal_system
 
 end module data_types

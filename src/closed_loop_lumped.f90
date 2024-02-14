@@ -14,7 +14,9 @@ subroutine closed_loop_lumped(nstep, &
      mv_leff, mv_aeffmin, mv_aeffmax, mv_kvc, mv_kvo, &
      pv_leff, pv_aeffmin, pv_aeffmax, pv_kvc, pv_kvo, &
      tv_leff, tv_aeffmin, tv_aeffmax, tv_kvc, tv_kvo, &
-     t1, t2, t3, t4, sol_out) bind(c, name='solve_system')
+     t1, t2, t3, t4, &
+     k_dil, T_cr, T_cr_ref, k_con, T_sk, T_sk_ref, &
+     sol_out) bind(c, name='solve_system')
   
   use iso_c_binding
   use funcs
@@ -40,10 +42,12 @@ subroutine closed_loop_lumped(nstep, &
   real(c_double), intent(in), value :: mv_leff, mv_aeffmin, mv_aeffmax, mv_kvc, mv_kvo
   real(c_double), intent(in), value :: pv_leff, pv_aeffmin, pv_aeffmax, pv_kvc, pv_kvo
   real(c_double), intent(in), value :: tv_leff, tv_aeffmin, tv_aeffmax, tv_kvc, tv_kvo
+  real(c_double), intent(in), value :: k_dil, T_cr, T_cr_ref, k_con, T_sk, T_sk_ref
 
   type (arterial_system) :: sys, pulm
   type (chamber) :: LV, LA, RV, RA
   type (valve) :: AV, MV, PV, TV
+  type (thermal_system) :: therm
 
   real(c_double) :: scale_Emax, scale_EmaxLV, scale_EmaxRV
   
@@ -80,6 +84,10 @@ subroutine closed_loop_lumped(nstep, &
   TV = valve(real(tv_leff, dp), real(tv_aeffmin, dp), real(tv_aeffmax, dp), &
        real(tv_kvc, dp), real(tv_kvo, dp))
 
+  ! Sets up thermal system
+  therm = thermal_system(&
+       real(k_dil, dp), real(T_cr, dp), real(T_cr_ref, dp), &
+       real(k_con, dp), real(T_sk, dp), real(T_sk_ref, dp))
   
   sol = solve_system(int(nstep), &
        real(T, dp), int(ncycle), int(rk), real(pini_sys, dp), real(pini_pulm, dp), &
@@ -88,8 +96,8 @@ subroutine closed_loop_lumped(nstep, &
        real(rho, dp), sys, pulm, &
        real(scale_EmaxLV, dp), real(scale_EmaxRV, dp), real(scale_Emax, dp), &
        LV, LA, RV, RA, &
-       real(t1, dp), real(t2, dp), real(t3, dp), real(t4, dp))
+       real(t1, dp), real(t2, dp), real(t3, dp), real(t4, dp), &
+       therm)
 
   sol_out = real(sol, c_double)
-
 end subroutine closed_loop_lumped

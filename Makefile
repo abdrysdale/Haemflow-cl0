@@ -12,6 +12,7 @@ SRCS := src/closed_loop_lumped.f90 \
 		src/funcs.f90 \
 		src/inputs.f90 \
 		src/kind_parameter.f90 \
+		src/thermoregulation.f90 \
 		app/main.f90
 PROG := closed_loop_lumped
 OBJS := $(addsuffix .o, $(SRCS))
@@ -45,8 +46,11 @@ funcs.mod := src/kind_parameter.f90.o \
 	src/data_types.f90.o \
 	src/inputs.f90.o \
 	src/cust_fns.f90.o \
-	src/elastance.f90.o
+	src/elastance.f90.o \
+	src/thermoregulation.f90
 inputs.mod := src/kind_parameter.f90.o \
+	src/data_types.f90.o
+thermoregulation.mod := src/kind_parameter.f90.o \
 	src/data_types.f90.o
 app/main.f90.o: $(main.mod)
 src/closed_loop_lumped.f90.o: $(closed_loop_lumped.mod)
@@ -55,6 +59,7 @@ src/data_types.f90.o: $(data_types.mod)
 src/elastance.f90.o: $(elastance.mod)
 src/funcs.f90.o: $(funcs.mod)
 src/inputs.f90.o: $(inputs.mod)
+src/thermoregulation.f90.o: $(thermoregulation.mod)
 
 clean:
 	$(RM) $(filter %.o, %(OBJS)) $(wildcard *.mod) $(PROG) $(wildcard *.so)

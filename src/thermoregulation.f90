@@ -1,9 +1,10 @@
 module thermoregulation
-  use kind_parameters
+  use kind_parameter
+  use data_types
 
 contains
 
-  pure function calc_resistance_index(&
+   pure function calc_resistance_index(&
     q_sk_basal, &
     k_dil, T_cr, T_cr_ref, &
     k_con, T_sk, T_sk_ref) result(lambda)
@@ -22,37 +23,36 @@ contains
     real(dp) :: csig_sk                 ! Cold signal - skin.
     real(dp) :: lambda                  ! Resistance index.
 
-    wsig_cr = max(0, T_cr - T_cr_ref)
-    csig_sk = max(0, T_sk_ref - T_sk)
+    wsig_cr = max(0.0_dp, T_cr - T_cr_ref)
+    csig_sk = max(0.0_dp, T_sk_ref - T_sk)
 
     lambda = (q_sk_basal + k_dil * wsig_cr) / (q_sk_basal * (1 + k_con * csig_sk))
 
   end function calc_resistance_index
 
-  subroutine update_skin_resistance(&
-    r_sk, &
-    q_sk_basal, &
-    k_dil, T_cr, T_cr_ref, &
-    k_con, T_sk, T_sk_ref)
+  pure function calc_r_sk(r_sk, q_sk_basal, therm) result(new_r_sk)
     ! Updates the skin resistance based on Gagge's two-node thermal model.
 
     ! Declares variables
-    real(dp), intent(in) :: q_sk_basal  ! Basal skin flow at neutral conditions
-    real(dp), intent(in) :: k_dil       ! Coefficient of vasodilation
-    real(dp), intent(in) :: T_cr        ! Core temperature
-    real(dp), intent(in) :: T_cr_ref    ! Core temperature at neutral conditions
-    real(dp), intent(in) :: k_con       ! Coefficient of vasoconstriction
-    real(dp), intent(in) :: T_sk        ! Skin temperature
-    real(dp), intent(in) :: T_sk_ref    ! Skin temperature at neutral condtions
-
-    real(dp), intent(inout) :: r_sk     ! Skin resistance
+    real(dp), intent(in) :: r_sk                ! Skin resistance
+    real(dp), intent(in) :: q_sk_basal          ! Basal skin flow at neutral conditions
+    type (thermal_system), intent(in) :: therm   ! Thermal system coefficients
 
     real(dp) :: lambda                  ! Resistance index
-    lambda = calc_resistance_index(&
-         q_sk_basal, &
-         k_dil, T_cr, T_cr_ref, &
-         k_con, T_sk, T_sk_ref)
+    real(dp) :: new_r_sk                ! New skin resistance
 
-    r_sk = r_sk / lambda
+    ! Avoids diving by 0
+    if (abs(q_sk_basal) > 1e-30) then
+       lambda = calc_resistance_index(&
+            q_sk_basal, &
+            therm%k_dil, therm%T_cr, therm%T_cr_ref, &
+            therm%k_con, therm%T_sk, therm%T_sk_ref)
+    else
+       lambda = 1.0_dp
+    end if
 
-  end subroutine update_skin_resistance
+
+    new_r_sk = r_sk / lambda
+
+  end function calc_r_sk
+end module thermoregulation

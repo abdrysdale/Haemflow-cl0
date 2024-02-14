@@ -82,3 +82,11 @@ t2=0.142
 t3=0.462
 t4=0.522
 /
+&THERMAL
+therm%k_dil=75
+therm%T_cr=36.8
+therm%T_cr_ref=36.8
+therm%k_con=0.5
+therm%T_sk=34.1
+therm%T_sk_ref=34.1
+/

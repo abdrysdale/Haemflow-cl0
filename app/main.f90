@@ -23,6 +23,8 @@ program main
     type (arterial_system) :: pulm
     type (chamber) :: LV, LA, RV, RA
     real(dp) :: t1, t2, t3, t4
+    type (thermal_system) :: therm
+
 
     ! Declares the namelists
     namelist /INPUTS/ nstep, T, ncycle, pini_sys, pini_pulm, rk
@@ -30,6 +32,7 @@ program main
     namelist /ARTERIES/ scale_Rsys, scale_Csys, scale_Rpulm, scale_Cpulm, rho, sys, pulm
     namelist /HEART/ scale_EmaxLV, scale_EmaxRV, scale_Emax, LV, LA, RV, RA
     namelist /ECG/ t1, t2, t3, t4
+    namelist /THERMAL/ therm
 
     !!! Initialisation !!!
     ! Defines initial variables
@@ -40,6 +43,7 @@ program main
     read(nml=ARTERIES, unit=io)
     read(nml=HEART, unit=io)
     read(nml=ECG, unit=io)
+    read(nml=THERMAL, unit=io)
     close(io)
 
     headers = [ character(len=50) :: 'Aortic Valve Flow', &
@@ -81,7 +85,9 @@ program main
          rho, sys, pulm, &
          scale_EmaxLV, scale_EmaxRV, scale_Emax, &
          LV, LA, RV, RA, &
-         t1, t2, t3, t4)
+         t1, t2, t3, t4, &
+         therm &
+         )
 
     ! Saves the solution
     io = 42
