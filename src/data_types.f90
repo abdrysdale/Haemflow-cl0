@@ -12,7 +12,7 @@ module data_types
     ! Declares the type for each chamber
     type :: chamber
         real(dp) :: Emin ! Minimum elastance
-        real(dp) :: Emax ! Maximum elstance
+        real(dp) :: Emax ! Maximum elastance
         real(dp) :: V0_1 ! Minimum volume
         real(dp) :: V0_2 ! Maximum volume
     end type chamber
@@ -25,7 +25,7 @@ module data_types
         type (chamber) :: RA ! Right atrium
      end type chambers
 
-    ! Declare artery system
+    ! Declare systemic/pulmonary system
     type :: arterial_system
         real(dp) :: Ras ! Aortic (or Pulmonary Artery) Sinus Resistance
         real(dp) :: Rat ! Artery Resistance
@@ -41,18 +41,18 @@ module data_types
 
     ! Declares the complete network
     type :: arterial_network
-        type (arterial_system) :: sys
-        type (arterial_system) :: pulm
+        type (arterial_system) :: sys   ! Systemic system (arterial and venous)
+        type (arterial_system) :: pulm  ! Pulmonary system (arterial and venous)
         real(dp) :: rho
      end type arterial_network
 
     ! Declares the valve type
     type :: valve
-        real(dp) :: Leff ! Effective inductance of the valve.
+        real(dp) :: Leff    ! Effective inductance of the valve.
         real(dp) :: Aeffmin ! Minimum effective area of the valve.
         real(dp) :: Aeffmax ! Maximum effective area of the valve.
-        real(dp) :: Kvc ! Valve closing parameter
-        real(dp) :: Kvo ! Valve opening parameter
+        real(dp) :: Kvc     ! Valve closing parameter
+        real(dp) :: Kvo     ! Valve opening parameter
      end type valve
 
     ! Declares a system of valves
