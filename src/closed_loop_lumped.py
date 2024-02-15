@@ -446,4 +446,4 @@ def solve_system(
 
 if __name__ == "__main__":
     sol = solve_system()
-    print(np.mean(sol["Aortic Valve Flow"]))
+    print(np.mean([np.mean(sol[key]) for key in list(sol.keys())]))
