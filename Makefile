@@ -3,6 +3,9 @@
 FC := gfortran
 LD := $(FC)
 RM := rm -f
+CFLAGS= -Wall -Wextra -O2
+DEBUGFLAGS=-g
+OPTFLAGS=-O2
 
 # Source files
 SRCS := src/closed_loop_lumped.f90 \
@@ -15,20 +18,31 @@ SRCS := src/closed_loop_lumped.f90 \
 		src/thermoregulation.f90 \
 		app/main.f90
 PROG := closed_loop_lumped
+LIB := $(PROG).so
 OBJS := $(addsuffix .o, $(SRCS))
 
-.PHONY: all clean
+.PHONY: all clean debug
 all: $(PROG)
 
 $(PROG): $(OBJS)
 	$(LD) -o $@ $^
 
 $(OBJS): %.o: %
-	$(FC) -c -o $@ $<
+	$(FC) $(CFLAGS) -c -o $@ $<
 
-lib: $(OBJS)
-	$(FC) -c $(SRCS)
-	$(FC) -m64 -shared $(LIB) -o $(PROG).so $(OBJS)
+debug: CFLAGS+=$(DEBUGFLAGS)
+debug: $(PROG)
+debug: $(LIB)
+
+opt: CFLAGS+=$(OPTFLAGS)
+opt: $(PROG)
+opt: $(LIB)
+
+$(LIB): $(OBJS)
+	$(FC) $(CFLAGS) -c $(SRCS)
+	$(FC) $(CFLAGS) -m64 -shared -o $(LIB) $(OBJS)
+
+lib: $(LIB)
 
 # Defines module interdependencies
 main.mod := src/kind_parameter.f90.o \
