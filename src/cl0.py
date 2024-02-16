@@ -132,7 +132,7 @@ def load_defaults():
         "t_cr_ref": 36.8,       # Core temperature under neutral conditions
         "k_con": 0.5,           # Coefficient of vasoconstriction
         "t_sk": 34.1,           # Skin temperature
-        "t_sk_ref": 34.1,        # Skin temperature under neutral conditions
+        "t_sk_ref": 34.1,       # Skin temperature under neutral conditions
     }
 
     defaults = {
