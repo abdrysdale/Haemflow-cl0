@@ -62,4 +62,4 @@ src/inputs.f90.o: $(inputs.mod)
 src/thermoregulation.f90.o: $(thermoregulation.mod)
 
 clean:
-	$(RM) $(filter %.o, %(OBJS)) $(wildcard *.mod) $(PROG) $(wildcard *.so)
+	$(RM) $(wildcard src/*.o) $(wildcard src/*.mod) $(PROG) $(wildcard src/*.so)
