@@ -83,6 +83,7 @@ t3=0.462
 t4=0.522
 /
 &THERMAL
+therm%q_sk_basal=6.3
 therm%k_dil=75
 therm%T_cr=36.8
 therm%T_cr_ref=36.8

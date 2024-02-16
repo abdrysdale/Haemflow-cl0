@@ -72,7 +72,9 @@ module data_types
         real(dp), allocatable :: ERA(:) ! Elastance curve for the right atrium
      end type heart_elastance
 
+     ! Declares the system of thermal parameters
      type :: thermal_system
+        real(dp) :: q_sk_basal  ! Basal skin blood flow under neutral conditions (Kg / m^2 / hr)
         real(dp) :: k_dil       ! Coefficient of vasodilation
         real(dp) :: T_cr        ! Core temperature
         real(dp) :: T_cr_ref    ! Core temperature at neutral conditions

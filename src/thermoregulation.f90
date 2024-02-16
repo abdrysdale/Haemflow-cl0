@@ -30,21 +30,20 @@ contains
 
   end function calc_resistance_index
 
-  pure function calc_r_sk(r_sk, q_sk_basal, therm) result(new_r_sk)
+  pure function calc_r_sk(r_sk, therm) result(new_r_sk)
     ! Updates the skin resistance based on Gagge's two-node thermal model.
 
     ! Declares variables
     real(dp), intent(in) :: r_sk                ! Skin resistance
-    real(dp), intent(in) :: q_sk_basal          ! Basal skin flow at neutral conditions
-    type (thermal_system), intent(in) :: therm   ! Thermal system coefficients
+    type (thermal_system), intent(in) :: therm  ! Thermal system coefficients
 
     real(dp) :: lambda                  ! Resistance index
     real(dp) :: new_r_sk                ! New skin resistance
 
     ! Avoids diving by 0
-    if (abs(q_sk_basal) > 1e-30) then
+    if (abs(therm%q_sk_basal) > 1e-30) then
        lambda = calc_resistance_index(&
-            q_sk_basal, &
+            therm%q_sk_basal, &         ! Basal Skin Blood Flow under neutral conditions
             therm%k_dil, therm%T_cr, therm%T_cr_ref, &
             therm%k_con, therm%T_sk, therm%T_sk_ref)
     else

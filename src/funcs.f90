@@ -88,7 +88,7 @@ contains
         ftot(2) = (psas - psat - a_cof%sys%Ras * Qsas) / a_cof%sys%Las
 
         ! Updates capillary resistance based on thermal model
-        R_scp = calc_r_sk(a_cof%sys%Rcp, Qsat, therm)
+        R_scp = calc_r_sk(a_cof%sys%Rcp, therm)
         ftot(3) = (psat - psvn - (a_cof%sys%Rat + a_cof%sys%Rar + R_scp)* Qsat) / a_cof%sys%Lat
         Qsvn = (psvn  - pra) / a_cof%sys%Rvn
 

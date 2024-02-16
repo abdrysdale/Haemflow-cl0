@@ -127,6 +127,7 @@ def load_defaults():
     }
 
     thermal_system = {
+        "q_sk_basal": 6.3,      # Basal skin blood flow under neutral conditions (kg/m^2/hr)
         "k_dil": 75,            # Coefficient of vasodilation
         "t_cr": 36.8,           # Core temperature
         "t_cr_ref": 36.8,       # Core temperature under neutral conditions
@@ -369,6 +370,7 @@ def solve_system(
     t4 = ct.c_double(inputs["ecg"]["t4"])
 
     # Thermal system
+    q_sk_basal = ct.c_double(inputs["thermal_system"]["q_sk_basal"])
     k_dil = ct.c_double(inputs["thermal_system"]["k_dil"])
     t_cr = ct.c_double(inputs["thermal_system"]["t_cr"])
     t_cr_ref = ct.c_double(inputs["thermal_system"]["t_cr_ref"])
@@ -403,7 +405,7 @@ def solve_system(
         pv_leff, pv_aeffmin, pv_aeffmax, pv_kvc, pv_kvo,
         tv_leff, tv_aeffmin, tv_aeffmax, tv_kvc, tv_kvo,
         t1, t2, t3, t4,
-        k_dil, t_cr, t_cr_ref, k_con, t_sk, t_sk_ref,
+        q_sk_basal, k_dil, t_cr, t_cr_ref, k_con, t_sk, t_sk_ref,
         sol_out.ctypes.data_as(ct.POINTER(ct.c_double)),
     )
 
