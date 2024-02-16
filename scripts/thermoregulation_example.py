@@ -7,6 +7,7 @@ import logging
 
 # Module imports
 import matplotlib.pyplot as plt
+import h5py
 
 # Local imports
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,6 +58,14 @@ def main():
     plt.show()
 
     # Save the data to hdf5 file
+    file_name = os.path.join(os.getcwd(), "scripts", "thermoregulation_output.hdf5")
+    with h5py.File(file_name, "w") as _:
+        pass
+    with h5py.File(file_name, "a") as f:
+        for i, sol in enumerate(sol_list):
+            grp = f.create_group(str(t_cr_list[i]))
+            for key in list(sol.keys()):
+                grp.create_dataset(key, data=sol[key])
 
 
 if __name__ == "__main__":
