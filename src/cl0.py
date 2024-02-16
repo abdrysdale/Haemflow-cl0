@@ -5,9 +5,12 @@
 import os
 import ctypes as ct
 import logging
+from typing import Optional
+import multiprocessing as mp
 
 # Module imports
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +25,7 @@ def load_defaults():
     generic_params = {
         "nstep": 2000,  # Number of time steps.
         "period": 0.9,  # Cardiac period.
-        "ncycle": 10,   # Number of cardiac cycles.
+        "ncycle": 10,   # Number of cardiac cycles, only last is returned.
         "rk": 4,        # Runge-Kutta order (2 or 4).
         "rho": 1.06,    # Density of blood.
     }
@@ -156,20 +159,20 @@ def load_defaults():
 
 
 def solve_system(
-        generic_params=None,
-        ecg=None,
-        left_ventrical=None,
-        left_atrium=None,
-        right_ventrical=None,
-        right_atrium=None,
-        systemic=None,
-        pulmonary=None,
-        aortic_valve=None,
-        mitral_valve=None,
-        pulmonary_valve=None,
-        tricuspid_valve=None,
-        thermal_system=None,
-):
+        generic_params: Optional[dict] = None,
+        ecg: Optional[dict] = None,
+        left_ventrical: Optional[dict] = None,
+        left_atrium: Optional[dict] = None,
+        right_ventrical: Optional[dict] = None,
+        right_atrium: Optional[dict] = None,
+        systemic: Optional[dict] = None,
+        pulmonary: Optional[dict] = None,
+        aortic_valve: Optional[dict] = None,
+        mitral_valve: Optional[dict] = None,
+        pulmonary_valve: Optional[dict] = None,
+        tricuspid_valve: Optional[dict] = None,
+        thermal_system: Optional[dict] = None,
+) -> npt.NDArray[np.float64]:
     """Solves the lumped parameter closed loop system.
 
     If any of the dictionaries or keys are not provided or any keys default values will be used.
@@ -444,6 +447,39 @@ def solve_system(
     }
 
     return sol
+
+
+def _solve_system(return_dict, idx, params):
+    """Wrapper to solve system and store in a dictionary."""
+    return_dict[idx] = solve_system(**params)
+    return return_dict
+
+
+def solve_system_parallel(param_list: list, num_workers: Optional[int] = None) -> list:
+    """Solve the system with multiple sets of arguments in parallel.
+
+    Args:
+        param_list (list) : A list of parameters to be unpacked and passed
+                to solve_system.
+        num_workers (int, optional) : Maximum number of processes to use.
+
+    Returns:
+        sol_list (list) : A list of solution dictionaries.
+    """
+
+    num_workers = mp.cpu_count() - 1 if num_workers is None else num_workers
+    num_workers = min(len(param_list), num_workers)
+    logger.info(f"Solving {len(param_list)} systems using {num_workers} workerse.")
+
+    manager = mp.Manager()
+    return_dict = manager.dict()
+
+    pool = mp.Pool(num_workers)
+    for idx, param in enumerate(param_list):
+        pool.apply_async(_solve_system, (return_dict, idx, param_list[idx]))
+    pool.close()
+    pool.join()
+    return list(return_dict.values())
 
 
 if __name__ == "__main__":

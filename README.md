@@ -39,7 +39,7 @@ python thermoregulation_example.py
 
 ## Usage
 
-This module provides two functions, `solve_system` and `load_defaults`.
+This module provides three functions, `solve_system`, `solve_system_parallel` and `load_defaults`.
 
 `load_defaults` loads the default parameter values in the correct format, if you would like to have a look at default parameters, run the `load_defaults` function.
 
@@ -70,6 +70,25 @@ sol = solve_system(
     )
 ```
 
+`solve_system_parallel` provides a wrapper around the `solve_system` function but launches processes in parallel.
+
+It expects a parameter list as an argument, whereby each item in the list is unpacked to the `solve_system` function, along with a `num_workers` which is the maximum number of processes to use.
+
+As an example:
+
+```python
+
+# Method 1
+param_list = [{"thermal_system": {"t_cr": x}} for x in range(34, 41)]
+sol_list = solve_system_parallel(param_list)
+
+# Method 2
+sol_list = []
+for t_cr in range(34, 41):
+    sol_list.append(solve_system("thermal_system"={"t_cr": t_cr}))
+    
+# Methods 1 and 2 are identical in results but method 1 operates in parallel.
+```
 
 
 ### Default Values
