@@ -47,7 +47,7 @@ funcs.mod := src/kind_parameter.f90.o \
 	src/inputs.f90.o \
 	src/cust_fns.f90.o \
 	src/elastance.f90.o \
-	src/thermoregulation.f90
+	src/thermoregulation.f90.o
 inputs.mod := src/kind_parameter.f90.o \
 	src/data_types.f90.o
 thermoregulation.mod := src/kind_parameter.f90.o \
