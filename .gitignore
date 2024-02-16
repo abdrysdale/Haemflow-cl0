@@ -2,3 +2,6 @@
 *.o
 *.mod
 /closed_loop_lumped
+*#
+/src/__pycache__/
+/output.csv
