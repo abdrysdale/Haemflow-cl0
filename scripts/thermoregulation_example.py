@@ -1,0 +1,63 @@
+#! /usr/bin/env py
+
+# Python imports
+import os
+import sys
+import logging
+
+# Module imports
+import matplotlib.pyplot as plt
+
+# Local imports
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+from src import solve_system
+
+logger = logging.getLogger(__file__)
+
+
+def main():
+    """Main script for solving the system."""
+
+    # Iterates over a range of temperatures to observe thermoregulation effects
+    t_cr_list = range(34, 41)
+    sol_list = []
+
+    for t_cr in t_cr_list:
+        thermal_system = {"t_cr": t_cr}
+        sol_list.append(solve_system(thermal_system=thermal_system))
+
+    # Effect on Tricuspid valve flow
+    for k, key in enumerate(("Systemic Artery Pressure", "Tricuspid Valve Flow")):
+
+        plt.subplot(2, 1, k + 1)
+        var = key.split(" ")[-1]
+        match var.lower():
+            case "pressure":
+                unit = "(mmHg)"
+            case "flow":
+                unit = "(ml/s)"
+            case "volume":
+                unit = "(ml)"
+            case "status":
+                unit = ""
+            case "elastance":
+                unit = "(mmHg/ml)"
+
+        for i, sol in enumerate(sol_list):
+            plt.plot(
+                sol['Time (s)'],
+                sol[key],
+                label=f"{t_cr_list[i]}°C",
+            )
+        plt.xlabel("Time (s)")
+        plt.ylabel(f"{var} {unit}")
+        plt.title(f"{key} with varrying core temperature")
+        plt.legend()
+    plt.show()
+
+    # Save the data to hdf5 file
+
+
+if __name__ == "__main__":
+    main()
