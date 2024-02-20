@@ -22,8 +22,8 @@ def main():
     bps = [(100, 70), (120, 80), (150, 120)]
     sol_list = []
     for sys, dia in bps:
-        print(f"Optimising for a blood pressure of: {sys} / {dia}")
-        opt = Optimiser(inputs=inputs, budget=100)
+        logger.info(f"Optimising for a blood pressure of: {sys}/{dia}")
+        opt = Optimiser(inputs=inputs, budget=100, num_workers=8)
         sol_list.append(solve_system(**opt.run(sbp=sys, dbp=dia)))
 
     # Effect on Tricuspid valve flow

@@ -5,6 +5,7 @@
 import logging
 from typing import Optional
 from collections.abc import MutableMapping
+from concurrent import futures
 
 # Module imports
 import numpy as np
@@ -208,6 +209,9 @@ class Optimiser:
             parametrization=instrum, **kwargs,
         )
 
+        # If 'num_workers' > 1 then switch to optimisation to parallel mode
+        self.parallel = bool(kwargs.get("num_workers", 1) - 1)
+
     def solve_system(self, **flat_params) -> dict:
         flat_inputs = self.flat_inputs
         for key, value in flat_params.items():
@@ -221,8 +225,10 @@ class Optimiser:
         dia = np.min(sol["Systemic Artery Pressure"])
         return (sys, dia)
 
-    def run(self, sbp: float = 120, dbp: float = 80) -> dict:
+    def run(self, sbp: float = 120, dbp: float = 80, **kwargs) -> dict:
         """Runs the optimiser.
+
+        All other keyword arguments are passed to the optimiser.
 
         Args:
                 sbp (float, optional) : Systemic artery systolic pressure in
@@ -235,7 +241,15 @@ class Optimiser:
             sys, dia = self.get_systemic_sysdia_pres(*args, **kwargs)
             return np.abs(sys - sbp) / sbp + np.abs(dia - dbp) / dbp
 
-        recommendation = self.optimiser.minimize(minimise)
+        if self.parallel:
+            with futures.ThreadPoolExecutor(
+                    max_workers=self.optimiser.num_workers
+            ) as executor:
+                recommendation = self.optimiser.minimize(
+                    minimise, executor=executor, batch_mode=False, **kwargs
+                )
+        else:
+            recommendation = self.optimiser.minimize(minimise, **kwargs)
 
         logger.info(recommendation)
 
