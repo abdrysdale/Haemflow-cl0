@@ -158,6 +158,58 @@ def load_defaults():
     return defaults
 
 
+def _format_solver_inputs(
+        generic_params: Optional[dict] = None,
+        ecg: Optional[dict] = None,
+        left_ventrical: Optional[dict] = None,
+        left_atrium: Optional[dict] = None,
+        right_ventrical: Optional[dict] = None,
+        right_atrium: Optional[dict] = None,
+        systemic: Optional[dict] = None,
+        pulmonary: Optional[dict] = None,
+        aortic_valve: Optional[dict] = None,
+        mitral_valve: Optional[dict] = None,
+        pulmonary_valve: Optional[dict] = None,
+        tricuspid_valve: Optional[dict] = None,
+        thermal_system: Optional[dict] = None,
+):
+    input_dicts = {
+        "generic_params": generic_params,
+        "ecg": ecg,
+        "left_ventrical": left_ventrical,
+        "left_atrium": left_atrium,
+        "right_ventrical": right_ventrical,
+        "right_atrium": right_atrium,
+        "systemic": systemic,
+        "pulmonary": pulmonary,
+        "aortic_valve": aortic_valve,
+        "mitral_valve": mitral_valve,
+        "pulmonary_valve": pulmonary_valve,
+        "tricuspid_valve": tricuspid_valve,
+        "thermal_system": thermal_system,
+    }
+
+    # Checks all input parameters, if a parameter is missing, load the default
+    defaults = load_defaults()
+    inputs = dict()
+    for idict in list(input_dicts.keys()):
+        if input_dicts[idict] is None:
+            inputs[idict] = defaults[idict]
+            logger.debug(
+                f"Parameter dictionary {idict} not supplied, loading default."
+            )
+        else:
+            tmp_dict = dict()
+            for key in list(defaults[idict].keys()):
+                tmp_dict[key] = input_dicts[idict].get(key, defaults[idict][key])
+                logger.debug(
+                    f"Parameter {idict}: {key} not supplied, loading default."
+                )
+            inputs[idict] = tmp_dict
+
+    return inputs
+
+
 def solve_system(
         generic_params: Optional[dict] = None,
         ecg: Optional[dict] = None,
@@ -232,39 +284,13 @@ def solve_system(
     ###############
     # Load inputs #
     ###############
-    input_dicts = {
-        "generic_params": generic_params,
-        "ecg": ecg,
-        "left_ventrical": left_ventrical,
-        "left_atrium": left_atrium,
-        "right_ventrical": right_ventrical,
-        "right_atrium": right_atrium,
-        "systemic": systemic,
-        "pulmonary": pulmonary,
-        "aortic_valve": aortic_valve,
-        "mitral_valve": mitral_valve,
-        "pulmonary_valve": pulmonary_valve,
-        "tricuspid_valve": tricuspid_valve,
-        "thermal_system": thermal_system,
-    }
-
-    # Checks all input parameters, if a parameter is missing, load the default
-    defaults = load_defaults()
-    inputs = dict()
-    for idict in list(input_dicts.keys()):
-        if input_dicts[idict] is None:
-            inputs[idict] = defaults[idict]
-            logger.debug(
-                f"Parameter dictionary {idict} not supplied, loading default."
-            )
-        else:
-            tmp_dict = dict()
-            for key in list(defaults[idict].keys()):
-                tmp_dict[key] = input_dicts[idict].get(key, defaults[idict][key])
-                logger.debug(
-                    f"Parameter {idict}: {key} not supplied, loading default."
-                )
-            inputs[idict] = tmp_dict
+    inputs = _format_solver_inputs(
+        generic_params, ecg,
+        left_ventrical, left_atrium, right_ventrical, right_atrium,
+        systemic, pulmonary,
+        aortic_valve, mitral_valve, pulmonary_valve, tricuspid_valve,
+        thermal_system,
+    )
 
     logger.info(f"Solving system with the following parameters:\n{inputs}\n")
 

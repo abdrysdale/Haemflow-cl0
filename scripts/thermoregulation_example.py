@@ -25,7 +25,9 @@ def main():
     sol_list = solve_system_parallel(param_list)
 
     # Effect on Tricuspid valve flow
-    for k, key in enumerate(("Systemic Artery Pressure", "Tricuspid Valve Flow")):
+    for k, key in enumerate(
+            ("Systemic Artery Pressure", "Tricuspid Valve Flow")
+    ):
 
         plt.subplot(2, 1, k + 1)
         var = key.split(" ")[-1]
@@ -54,7 +56,9 @@ def main():
     plt.show()
 
     # Save the data to hdf5 file
-    file_name = os.path.join(os.getcwd(), "scripts", "thermoregulation_output.hdf5")
+    file_name = os.path.join(
+        os.getcwd(), "scripts", "thermoregulation_output.hdf5"
+    )
     with h5py.File(file_name, "w") as _:
         pass
     with h5py.File(file_name, "a") as f:
