@@ -10,6 +10,7 @@ from concurrent import futures
 # Module imports
 import numpy as np
 import nevergrad as ng
+from tqdm import tqdm
 
 # Local imports
 from src import solve_system
@@ -159,6 +160,8 @@ class Optimiser:
             optimiser: Optional[str] = None,
             inputs: Optional[dict] = None,
             params: Optional[dict] = None,
+            pbar: bool = True,
+            tol: float = 0.0,
             **kwargs,
     ):
         """Initialises the optimiser
@@ -176,6 +179,10 @@ class Optimiser:
                         optimisation for that parameter.  If a list is provided
                         first item will be taken as lower, second as upper and
                         third as initial parameter guess.
+                pbar (bool, optional) : If True will display a progress bar.
+                        Defaults to True.
+                tol (float, optional) : Percentage tolerance for the optimiser.
+                        Defaults to 0.0,
         """
 
         self.inputs = _format_solver_inputs(inputs)
@@ -212,6 +219,22 @@ class Optimiser:
         # If 'num_workers' > 1 then switch to optimisation to parallel mode
         self.parallel = bool(kwargs.get("num_workers", 1) - 1)
 
+        # Registers early stopping (if tolerance > 0)
+        if tol > 0:
+            early_stopping = ng.callbacks.EarlyStopping(
+                lambda opt: opt.current_bests["minimum"].mean < tol
+            )
+            self.optimiser.register_callback("ask", early_stopping)
+
+        # Registers progress bar
+        if pbar:
+            pbar = tqdm(total=kwargs.get("budget", None))
+
+            def _update_pbar(*args, **kwargs):
+                pbar.update(1)
+
+            self.optimiser.register_callback("tell", _update_pbar)
+
     def solve_system(self, **flat_params) -> dict:
         flat_inputs = self.flat_inputs
         for key, value in flat_params.items():
@@ -236,6 +259,10 @@ class Optimiser:
                 dbp (float, optional) : Systemic artery diastolic pressure
                         in mmHg. Defaults to 80.
         """
+
+        logger.info(
+            f"Optimisation started with {self.optimiser.dimension} parameters."
+        )
 
         def minimise(*args, **kwargs):
             sys, dia = self.get_systemic_sysdia_pres(*args, **kwargs)
