@@ -39,7 +39,15 @@ python thermoregulation_example.py
 
 ## Usage
 
-This module provides three functions, `solve_system`, `solve_system_parallel` and `load_defaults`.
+This module provides the functions:
+
+- `solve_system`
+- `solve_system_parallel`
+- `load_defaults`
+- `load_default_params`
+
+Along with an optimisation class:
+- `Optimiser`
 
 `load_defaults` loads the default parameter values in the correct format, if you would like to have a look at default parameters, run the `load_defaults` function.
 
@@ -90,8 +98,39 @@ for t_cr in range(34, 41):
 # Methods 1 and 2 are identical in results but method 1 operates in parallel.
 ```
 
+`load_default_params` provides the default parameters to use for optimisation.
+
+Each parameter to be optimised is provided with a minimum, maximum and initial value.
+
+The `Optimiser`, is used to tune the network to yield a target systemic arterial  systolic and diastolic blood pressure.
+
+Any optimiser included with [nevergrad](https://facebookresearch.github.io/nevergrad/index.html) should work fine.
+
+```python
+from src import Optimiser, solve_system
+
+opt = Optimiser(
+    optimiser="NGOpt", # Nevergrad optimiser string
+    inputs={"thermal_system": {"t_cr": 38}}, # Inputs passed to the solver.
+    params={"thermal_system": {"k_con": [0.25, 0.75, 0.5]}}, # [lower, upper, initial] parameter values
+    pbar=True, # Displayes a progress bar
+    tol=1e-3, # Tolerance for early stopping
+    budget=100, # These keyword arguments are passed directly to the optimiser
+    num_workers=16, # Specifying num_workers > 1 auto-matically enables parallelisation
+)
+
+best_inputs = opt.run(
+    sbp=120, # Systolic blood pressure
+    dbp=80, # Diastolic blood pressure
+)
+
+# To get the optimised solution, run
+sol = solve_system(**best_inputs)
+```
 
 ### Default Values
+
+#### load_defaults
 
 The parameters are split into 13 sections, each with its own dictionary.
 These are:
