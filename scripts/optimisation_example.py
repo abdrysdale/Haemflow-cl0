@@ -19,15 +19,31 @@ def main():
 
     # Iterates over a range of temperatures to observe thermoregulation effects
     inputs = {"thermal_system": {"t_cr": 38}}
+    params = {
+        "thermal_system": {
+            "q_sk_basal": [3, 10, 6.3],
+            "k_dil": [37, 113, 75],
+            "k_con": [0.25, 0.75, 0.5],
+        },
+        "systemic": {
+            "scale_R": [0.35, 1.05, 0.7],
+            "scale_C": [0.4, 1.2, 0.8],
+        },
+        "pulmonary": {
+            "scale_R": [0.5, 1.5, 1],
+            "scale_C": [0.5, 1.5, 1],
+        },
+    }
     bps = [(100, 70), (120, 80), (150, 120)]
     sol_list = []
     for sys, dia in bps:
         logger.info(f"Optimising for a blood pressure of: {sys}/{dia}")
         opt = Optimiser(
-            optimiser="NGOpt",
+            optimiser="NelderMead",
             inputs=inputs,
+            params=params,
             budget=1000,
-            num_workers=16,
+            num_workers=1,
             tol=1e-3,
         )
         sol_list.append(solve_system(**opt.run(sbp=sys, dbp=dia)))
