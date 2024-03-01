@@ -60,7 +60,18 @@ def _unflatten_dict(dictionary: dict, sep: str = '.') -> dict:
 
 
 def load_default_params() -> dict:
-    """Loads the default parameters for tuning."""
+    """Loads the default parameters for tuning.
+
+    The default parameters is pretty much all of the parameters.
+    It is HIGHLY recommended that you use this is a guide to see what
+    optimisation parameters are available rather than as a sensible
+    default. For example, all of the value parameters are included in
+    the optimisation which isn't recommended.
+
+    It's recommended that you decide what parameters you are interested in
+    and restrict as much as possible to reduce the dimensionality of the
+    minimisation problem.
+    """
 
     generic_params = {}
 
@@ -236,6 +247,14 @@ class Optimiser:
             self.optimiser.register_callback("tell", _update_pbar)
 
     def solve_system(self, **flat_params) -> dict:
+        """Solves the system.
+
+        Essentially, wraps around the Fortran solver code and returns the
+        solution dictionary.
+
+        For more information about the solver, look at the function:
+        solve_system in cl0 (closed-loop-0D) module.
+        """
         flat_inputs = self.flat_inputs
         for key, value in flat_params.items():
             flat_inputs[key] = value
@@ -243,11 +262,27 @@ class Optimiser:
         return solve_system(**params)
 
     def get_systemic_sysdia_pres(self, sol) -> tuple:
+        """Returns the systemic systolic  and diastolic pressure.
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+
+        Returns:
+            (sys, dia) : Systemic systolic and diastolic pressure in mmHg.
+        """
         sys = np.max(sol["Systemic Artery Pressure"])
         dia = np.min(sol["Systemic Artery Pressure"])
         return (sys, dia)
 
     def get_cardiac_output(self, sol) -> float:
+        """Returns the cardiac output.
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+
+        Returns:
+            co (float) : Cardiac output in L/min.
+        """
         co = (
             1000 * np.sum(sol["Aortic Valve Flow"])
             * 60 / (sol['Time (s)'][-1] - sol['Time (s)'][0])
