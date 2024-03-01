@@ -242,32 +242,73 @@ class Optimiser:
         params = _unflatten_dict(flat_inputs)
         return solve_system(**params)
 
-    def get_systemic_sysdia_pres(self, *args, **kwargs) -> tuple:
-        sol = self.solve_system(*args, **kwargs)
+    def get_systemic_sysdia_pres(self, sol) -> tuple:
         sys = np.max(sol["Systemic Artery Pressure"])
         dia = np.min(sol["Systemic Artery Pressure"])
         return (sys, dia)
 
-    def run(self, sbp: float = 120, dbp: float = 80, **kwargs) -> dict:
+    def get_cardiac_output(self, sol) -> float:
+        co = (
+            1000 * np.sum(sol["Aortic Valve Flow"])
+            * 60 / (sol['Time (s)'][-1] - sol['Time (s)'][0])
+        )
+        return co
+
+    def run(
+            self,
+            sbp: Optional[float] = None,
+            dbp: Optional[float] = None,
+            co: Optional[float] = None,
+            **kwargs
+    ) -> dict:
         """Runs the optimiser.
 
         All other keyword arguments are passed to the optimiser.
 
         Args:
                 sbp (float, optional) : Systemic artery systolic pressure in
-                        mmHg Defaults to 120.
+                        mmHg. If None, will not be included in optimisation.
+                        Defaults  to None.
                 dbp (float, optional) : Systemic artery diastolic pressure
-                        in mmHg. Defaults to 80.
+                        in mmHg. If None, will not be included in optimisation.
+                        Defaults to None.
+                co (float, optional) : Cardiac output (L/min).
+                        If None, will not be included in optimisation.
+                        Defaults to None.
         """
 
         logger.info(
             f"Optimisation started with {self.optimiser.dimension} parameters."
         )
 
-        def minimise(*args, **kwargs):
-            sys, dia = self.get_systemic_sysdia_pres(*args, **kwargs)
-            return np.abs(sys - sbp) / sbp + np.abs(dia - dbp) / dbp
+        if sbp is None and dbp is None and co is None:
+            logger.error("You haven't set anything to optimise for?!\n")
+            raise ValueError('No optimisation criteria specified.')
 
+        # Minimisation function
+        def minimise(*args, **kwargs):
+            sol = self.solve_system(*args, **kwargs)
+
+            loss = 0
+
+            # Systemic Systolic and Diastolic Blood Pressure
+            if sbp is not None or dbp is not None:
+                sys, dia = self.get_systemic_sysdia_pres(sol)
+                if sbp is not None:
+                    loss += np.abs(sys - sbp) / sbp
+                if dbp is not None:
+                    loss += np.abs(dia - dbp) / dbp
+
+            # Cardiac Output
+            if co is not None:
+                cardiac_output = self.get_cardiac_output(sol)
+                loss += np.abs(cardiac_output - co) / cardiac_output
+
+            return loss
+
+        # Optimisation
+        # Whether to run parallel or not is determined if num_workers > 1.
+        # Which is specified during initialisation.
         if self.parallel:
             with futures.ThreadPoolExecutor(
                     max_workers=self.optimiser.num_workers
@@ -280,6 +321,7 @@ class Optimiser:
 
         logger.info(recommendation)
 
+        # Recombines optimised values into a full parameter dictionary
         full_recommendation = self.flat_inputs
         for key, value in recommendation[1].value.items():
             full_recommendation[key] = value
