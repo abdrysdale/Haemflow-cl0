@@ -481,7 +481,10 @@ def _solve_system(return_dict, idx, params):
     return return_dict
 
 
-def solve_system_parallel(param_list: list, num_workers: Optional[int] = None) -> list:
+def solve_system_parallel(
+        param_list: list,
+        num_workers: Optional[int] = None,
+) -> list:
     """Solve the system with multiple sets of arguments in parallel.
 
     Args:

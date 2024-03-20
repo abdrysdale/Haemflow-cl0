@@ -102,7 +102,14 @@ for t_cr in range(34, 41):
 
 Each parameter to be optimised is provided with a minimum, maximum and initial value.
 
-The `Optimiser`, is used to tune the network to yield a target systemic arterial  systolic and diastolic blood pressure.
+The `Optimiser`, is used to tune the network to yield certain physiological responses which can be any of:
+
+- Systolic blood pressure (`sbp`).
+- Diastolic blood pressure (`dbp`).
+- Cardiac Output (`co`).
+- Stroke Volume (`sv`).
+- Total peripheral resistance (`tpr`).
+- Total arterial compliance (`tac`).
 
 Any optimiser included with [nevergrad](https://facebookresearch.github.io/nevergrad/index.html) should work fine.
 
@@ -120,9 +127,13 @@ opt = Optimiser(
 )
 
 best_inputs = opt.run(
-    sbp=120, # Systolic blood pressure
-    dbp=80, # Diastolic blood pressure
+    sbp=120,    # Systolic blood pressure (mmHg)
+    dbp=80,     # Diastolic blood pressure (mmHg)
+    co=4,       # Cardiac Output (L/min)
+    sv=60,      # Stroke volume (mL)
 )
+# As tpr and tac are not specified, they won't be used in the optimisation.
+# A minimum of 1 metric is needed for optimisation.
 
 # To get the optimised solution, run
 sol = solve_system(**best_inputs)

@@ -34,7 +34,7 @@ def _flatten_dict(
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, MutableMapping):
-            items.extend(_flatten_dict(v, new_key, sep=sep).items())
+            items.extend(_flatten_dict(v, parent_key=new_key, sep=sep).items())
         else:
             items.append((new_key, v))
     return dict(items)
@@ -60,7 +60,18 @@ def _unflatten_dict(dictionary: dict, sep: str = '.') -> dict:
 
 
 def load_default_params() -> dict:
-    """Loads the default parameters for tuning."""
+    """Loads the default parameters for tuning.
+
+    The default parameters is pretty much all of the parameters.
+    It is HIGHLY recommended that you use this is a guide to see what
+    optimisation parameters are available rather than as a sensible
+    default. For example, all of the value parameters are included in
+    the optimisation which isn't recommended.
+
+    It's recommended that you decide what parameters you are interested in
+    and restrict as much as possible to reduce the dimensionality of the
+    minimisation problem.
+    """
 
     generic_params = {}
 
@@ -236,38 +247,189 @@ class Optimiser:
             self.optimiser.register_callback("tell", _update_pbar)
 
     def solve_system(self, **flat_params) -> dict:
+        """Solves the system.
+
+        Essentially, wraps around the Fortran solver code and returns the
+        solution dictionary.
+
+        For more information about the solver, look at the function:
+        solve_system in cl0 (closed-loop-0D) module.
+        """
         flat_inputs = self.flat_inputs
         for key, value in flat_params.items():
             flat_inputs[key] = value
         params = _unflatten_dict(flat_inputs)
         return solve_system(**params)
 
-    def get_systemic_sysdia_pres(self, *args, **kwargs) -> tuple:
-        sol = self.solve_system(*args, **kwargs)
+    def get_systemic_sysdia_pres(self, sol: dict) -> tuple:
+        """Returns the systemic systolic  and diastolic pressure.
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+
+        Returns:
+            (sys, dia) : Systemic systolic and diastolic pressure in mmHg.
+        """
         sys = np.max(sol["Systemic Artery Pressure"])
         dia = np.min(sol["Systemic Artery Pressure"])
         return (sys, dia)
 
-    def run(self, sbp: float = 120, dbp: float = 80, **kwargs) -> dict:
+    def get_cardiac_output(self, sol: dict) -> float:
+        """Returns the cardiac output.
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+
+        Returns:
+            co (float) : Cardiac output in L/min.
+        """
+        co = (
+            1000 * np.sum(sol["Aortic Valve Flow"])
+            * 60 / (sol['Time (s)'][-1] - sol['Time (s)'][0])
+        )
+        return co
+
+    def get_stroke_volume(self, sol: dict) -> float:
+        """Returns the stroke volume
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+
+        Returns:
+            sv (float) : Stroke volume in mL.
+        """
+        return np.sum(sol["Aortic Valve Flow"])
+
+    def get_total_peripheral_resistance(self, sol: dict) -> float:
+        """Returns the total peripheral resistance.
+
+        TPR = MAP / CO
+
+        TPR = Total peripheral resistance.
+        MAP = Mean arterial pressure.
+        CO = Cardiac Output.
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+        Returns:
+            tpr (float) : Total peripheral resistance (in Ohms).
+        """
+        co = self.get_cardiac_output(sol)
+        _map = np.mean(sol['Systemic Artery Pressure'])
+        return _map / co
+
+    def get_total_arterial_compliance(self, sol: dict) -> float:
+        """Returns the total arterial compliance.
+
+        TAC = SV / (SYS - DIA)
+
+        TAC = Total arterial compliance.
+        SV = Stroke Volume (mL).
+        SYS = Systemic systolic blood pressure (mmHg).
+        DIA = Systemic diastolic blood pressure (mmHg).
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+        Returns:
+            tac (float) : Total arterial compliance.
+        """
+        sv = self.get_stroke_volume(sol)
+        sys, dia = self.get_systemic_sysdia_pres(sol)
+        return (sv / (sys - dia))
+
+    def run(
+            self,
+            sbp: Optional[float] = None,
+            dbp: Optional[float] = None,
+            co: Optional[float] = None,
+            sv: Optional[float] = None,
+            tpr: Optional[float] = None,
+            tac: Optional[float] = None,
+            **kwargs
+    ) -> dict:
         """Runs the optimiser.
 
         All other keyword arguments are passed to the optimiser.
 
         Args:
                 sbp (float, optional) : Systemic artery systolic pressure in
-                        mmHg Defaults to 120.
+                        mmHg. If None, will not be included in optimisation.
+                        Defaults  to None.
                 dbp (float, optional) : Systemic artery diastolic pressure
-                        in mmHg. Defaults to 80.
+                        in mmHg. If None, will not be included in optimisation.
+                        Defaults to None.
+                co (float, optional) : Cardiac output (L/min).
+                        If None, will not be included in optimisation.
+                        Defaults to None.
+                sv (float, optional) : Stroke volume (mL).
+                        If None, will not be included in optimisation.
+                        Defaults to None.
+                tpr (float, optional) : Total peripheral resistance.
+                        If None, will not be included in optimisation.
+                        Defaults to None.
+                tac (float, optional) : Total arterial compliance.
+                        If None, will not be included in optimisation.
+                        Defaults to None.
         """
 
         logger.info(
             f"Optimisation started with {self.optimiser.dimension} parameters."
         )
 
-        def minimise(*args, **kwargs):
-            sys, dia = self.get_systemic_sysdia_pres(*args, **kwargs)
-            return np.abs(sys - sbp) / sbp + np.abs(dia - dbp) / dbp
+        if not any([
+                False if m is None else True for m in
+                (sbp, dbp, co, sv, tpr, tac)
+        ]):
+            logger.critical("You haven't set anything to optimise for?!\n")
+            raise ValueError('No optimisation criteria specified.')
 
+        if co is not None and sv is not None:
+            logger.warning(
+                "You have set to optimise for both stroke volume and cardiac "
+                "output. These two metrics are related.\n"
+                "I'll assume you want to do this "
+                "and you know what you're doing."
+            )
+
+        # Minimisation function
+        def minimise(*args, **kwargs):
+            sol = self.solve_system(*args, **kwargs)
+
+            loss = 0
+
+            # Systemic Systolic and Diastolic Blood Pressure
+            if sbp is not None or dbp is not None:
+                sys, dia = self.get_systemic_sysdia_pres(sol)
+                if sbp is not None:
+                    loss += np.abs(sys - sbp) / sbp
+                if dbp is not None:
+                    loss += np.abs(dia - dbp) / dbp
+
+            # Cardiac Output
+            if co is not None:
+                cardiac_output = self.get_cardiac_output(sol)
+                loss += np.abs(cardiac_output - co) / co
+
+            # Stroke Volume
+            if sv is not None:
+                stroke_volume = self.get_stroke_volume(sol)
+                loss += np.abs(stroke_volume - sv) / sv
+
+            # Total peripheral resistance
+            if tpr is not None:
+                total_peripheral_R = self.get_total_peripheral_resistance(sol)
+                loss += np.abs(total_peripheral_R - tpr) / tpr
+
+            # Total arterial compliance
+            if tac is not None:
+                total_arterial_C = self.get_total_arterial_compliance(sol)
+                loss += np.abs(total_arterial_C - tac) / tac
+
+            return loss
+
+        # Optimisation
+        # Whether to run parallel or not is determined if num_workers > 1.
+        # Which is specified during initialisation.
         if self.parallel:
             with futures.ThreadPoolExecutor(
                     max_workers=self.optimiser.num_workers
@@ -280,6 +442,7 @@ class Optimiser:
 
         logger.info(recommendation)
 
+        # Recombines optimised values into a full parameter dictionary
         full_recommendation = self.flat_inputs
         for key, value in recommendation[1].value.items():
             full_recommendation[key] = value
