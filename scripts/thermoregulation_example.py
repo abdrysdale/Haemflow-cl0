@@ -21,7 +21,7 @@ def main():
     """Main script for solving the system."""
 
     # Iterates over a range of temperatures to observe thermoregulation effects
-    param_list = [{"thermal_system": {"t_cr": x}} for x in range(34, 41)]
+    param_list = [{"thermal_system": {"t_cr": x/100}} for x in range(3730, 3760, 5)]
     sol_list = solve_system_parallel(param_list)
 
     # Effect on Tricuspid valve flow
