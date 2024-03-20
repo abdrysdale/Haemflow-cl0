@@ -34,7 +34,7 @@ def _flatten_dict(
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, MutableMapping):
-            items.extend(_flatten_dict(v, new_key, sep=sep).items())
+            items.extend(_flatten_dict(v, parent_key=new_key, sep=sep).items())
         else:
             items.append((new_key, v))
     return dict(items)
@@ -261,7 +261,7 @@ class Optimiser:
         params = _unflatten_dict(flat_inputs)
         return solve_system(**params)
 
-    def get_systemic_sysdia_pres(self, sol) -> tuple:
+    def get_systemic_sysdia_pres(self, sol: dict) -> tuple:
         """Returns the systemic systolic  and diastolic pressure.
 
         Args:
@@ -274,7 +274,7 @@ class Optimiser:
         dia = np.min(sol["Systemic Artery Pressure"])
         return (sys, dia)
 
-    def get_cardiac_output(self, sol) -> float:
+    def get_cardiac_output(self, sol: dict) -> float:
         """Returns the cardiac output.
 
         Args:
@@ -289,11 +289,62 @@ class Optimiser:
         )
         return co
 
+    def get_stroke_volume(self, sol: dict) -> float:
+        """Returns the stroke volume
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+
+        Returns:
+            sv (float) : Stroke volume in mL.
+        """
+        return np.sum(sol["Aortic Valve Flow"])
+
+    def get_total_peripheral_resistance(self, sol: dict) -> float:
+        """Returns the total peripheral resistance.
+
+        TPR = MAP / CO
+
+        TPR = Total peripheral resistance.
+        MAP = Mean arterial pressure.
+        CO = Cardiac Output.
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+        Returns:
+            tpr (float) : Total peripheral resistance (in Ohms).
+        """
+        co = self.get_cardiac_output(sol)
+        _map = np.mean(sol['Systemic Artery Pressure'])
+        return _map / co
+
+    def get_total_arterial_compliance(self, sol: dict) -> float:
+        """Returns the total arterial compliance.
+
+        TAC = SV / (SYS - DIA)
+
+        TAC = Total arterial compliance.
+        SV = Stroke Volume (mL).
+        SYS = Systemic systolic blood pressure (mmHg).
+        DIA = Systemic diastolic blood pressure (mmHg).
+
+        Args:
+            sol (dict) : Solution dictionary - output from cl0.solve_system.
+        Returns:
+            tac (float) : Total arterial compliance.
+        """
+        sv = self.get_stroke_volume(sol)
+        sys, dia = self.get_systemic_sysdia_pres(sol)
+        return (sv / (sys - dia))
+
     def run(
             self,
             sbp: Optional[float] = None,
             dbp: Optional[float] = None,
             co: Optional[float] = None,
+            sv: Optional[float] = None,
+            tpr: Optional[float] = None,
+            tac: Optional[float] = None,
             **kwargs
     ) -> dict:
         """Runs the optimiser.
@@ -310,15 +361,35 @@ class Optimiser:
                 co (float, optional) : Cardiac output (L/min).
                         If None, will not be included in optimisation.
                         Defaults to None.
+                sv (float, optional) : Stroke volume (mL).
+                        If None, will not be included in optimisation.
+                        Defaults to None.
+                tpr (float, optional) : Total peripheral resistance.
+                        If None, will not be included in optimisation.
+                        Defaults to None.
+                tac (float, optional) : Total arterial compliance.
+                        If None, will not be included in optimisation.
+                        Defaults to None.
         """
 
         logger.info(
             f"Optimisation started with {self.optimiser.dimension} parameters."
         )
 
-        if sbp is None and dbp is None and co is None:
-            logger.error("You haven't set anything to optimise for?!\n")
+        if not any([
+                False if m is None else True for m in
+                (sbp, dbp, co, sv, tpr, tac)
+        ]):
+            logger.critical("You haven't set anything to optimise for?!\n")
             raise ValueError('No optimisation criteria specified.')
+
+        if co is not None and sv is not None:
+            logger.warning(
+                "You have set to optimise for both stroke volume and cardiac "
+                "output. These two metrics are related.\n"
+                "I'll assume you want to do this "
+                "and you know what you're doing."
+            )
 
         # Minimisation function
         def minimise(*args, **kwargs):
@@ -337,7 +408,22 @@ class Optimiser:
             # Cardiac Output
             if co is not None:
                 cardiac_output = self.get_cardiac_output(sol)
-                loss += np.abs(cardiac_output - co) / cardiac_output
+                loss += np.abs(cardiac_output - co) / co
+
+            # Stroke Volume
+            if sv is not None:
+                stroke_volume = self.get_stroke_volume(sol)
+                loss += np.abs(stroke_volume - sv) / sv
+
+            # Total peripheral resistance
+            if tpr is not None:
+                total_peripheral_R = self.get_total_peripheral_resistance(sol)
+                loss += np.abs(total_peripheral_R - tpr) / tpr
+
+            # Total arterial compliance
+            if tac is not None:
+                total_arterial_C = self.get_total_arterial_compliance(sol)
+                loss += np.abs(total_arterial_C - tac) / tac
 
             return loss
 
