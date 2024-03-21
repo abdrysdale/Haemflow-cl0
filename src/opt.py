@@ -308,7 +308,9 @@ class Optimiser:
         Returns:
             sv (float) : Stroke volume in mL.
         """
-        return np.sum(sol["Aortic Valve Flow"])
+        dt = np.diff(sol['Time (s)'])
+        dt = np.concatenate((np.zeros(1) + dt[0], dt))
+        return np.sum(sol["Aortic Valve Flow"] * dt)
 
     def get_total_peripheral_resistance(self, sol: dict) -> float:
         """Returns the total peripheral resistance.
