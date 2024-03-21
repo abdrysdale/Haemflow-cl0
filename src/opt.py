@@ -2,6 +2,7 @@
 """Optimiser script for the 0D closed loop solver"""
 
 # Python imports
+import sys
 import logging
 from typing import Optional
 from collections.abc import MutableMapping
@@ -245,11 +246,16 @@ class Optimiser:
         # Registers progress bar
         self.loss = np.inf
         if pbar:
-            pbar = tqdm(total=kwargs.get("budget", None), position=pbar_pos)
+            pbar = tqdm(
+                total=kwargs.get("budget", None),
+                position=pbar_pos,
+                file=sys.stdout,
+                leave=True,
+            )
 
             def _update_pbar(*args, **kwargs):
                 pbar.update(1)
-                pbar.set_description(f"Tol: {self.loss:.3f}")
+                pbar.set_description(f"Tol: {self.loss:.4f}")
 
             self.optimiser.register_callback("tell", _update_pbar)
 
