@@ -437,6 +437,8 @@ class Optimiser:
                 total_arterial_C = self.get_total_arterial_compliance(sol)
                 loss += np.abs(total_arterial_C - tac) / tac
 
+            self.loss = loss
+
             return loss
 
         # Optimisation
