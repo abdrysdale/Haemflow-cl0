@@ -28,6 +28,10 @@ def load_defaults():
         "ncycle": 10,   # Number of cardiac cycles, only last is returned.
         "rk": 4,        # Runge-Kutta order (2 or 4).
         "rho": 1.06,    # Density of blood.
+        "e_scale": 1,   # Scales all heart elastance
+        "v_scale": 1,   # Scales all heart volume.
+        "r_scale": 1,   # Scales all resistances.
+        "c_scale": 1,   # Scales all compliances.
     }
 
     ecg = {
@@ -305,35 +309,39 @@ def solve_system(
     ncycle = ct.c_int(inputs["generic_params"]["ncycle"])
     rk = ct.c_int(inputs["generic_params"]["rk"])
     rho = ct.c_double(inputs["generic_params"]["rho"])
+    e_scale = inputs["generic_params"]["e_scale"]
+    v_scale = inputs["generic_params"]["v_scale"]
+    r_scale = inputs["generic_params"]["r_scale"]
+    c_scale = inputs["generic_params"]["c_scale"]
 
     # Left ventrical
-    lv_emin = ct.c_double(inputs["left_ventrical"]["emin"])
-    lv_emax = ct.c_double(inputs["left_ventrical"]["emax"])
-    lv_v01 = ct.c_double(inputs["left_ventrical"]["vmin"])
-    lv_v02 = ct.c_double(inputs["left_ventrical"]["vmax"])
+    lv_emin = ct.c_double(inputs["left_ventrical"]["emin"] * e_scale)
+    lv_emax = ct.c_double(inputs["left_ventrical"]["emax"] * e_scale)
+    lv_v01 = ct.c_double(inputs["left_ventrical"]["vmin"] * v_scale)
+    lv_v02 = ct.c_double(inputs["left_ventrical"]["vmax"] * v_scale)
 
     # Left atrium
-    la_emin = ct.c_double(inputs["left_atrium"]["emin"])
-    la_emax = ct.c_double(inputs["left_atrium"]["emax"])
-    la_v01 = ct.c_double(inputs["left_atrium"]["vmin"])
-    la_v02 = ct.c_double(inputs["left_atrium"]["vmax"])
+    la_emin = ct.c_double(inputs["left_atrium"]["emin"] * e_scale)
+    la_emax = ct.c_double(inputs["left_atrium"]["emax"] * e_scale)
+    la_v01 = ct.c_double(inputs["left_atrium"]["vmin"] * v_scale)
+    la_v02 = ct.c_double(inputs["left_atrium"]["vmax"] * v_scale)
 
     # Right ventrical
-    rv_emin = ct.c_double(inputs["right_ventrical"]["emin"])
-    rv_emax = ct.c_double(inputs["right_ventrical"]["emax"])
-    rv_v01 = ct.c_double(inputs["right_ventrical"]["vmin"])
-    rv_v02 = ct.c_double(inputs["right_ventrical"]["vmax"])
+    rv_emin = ct.c_double(inputs["right_ventrical"]["emin"] * e_scale)
+    rv_emax = ct.c_double(inputs["right_ventrical"]["emax"] * e_scale)
+    rv_v01 = ct.c_double(inputs["right_ventrical"]["vmin"] * v_scale)
+    rv_v02 = ct.c_double(inputs["right_ventrical"]["vmax"] * v_scale)
 
     # Right atrium
-    ra_emin = ct.c_double(inputs["right_atrium"]["emin"])
-    ra_emax = ct.c_double(inputs["right_atrium"]["emax"])
-    ra_v01 = ct.c_double(inputs["right_atrium"]["vmin"])
-    ra_v02 = ct.c_double(inputs["right_atrium"]["vmax"])
+    ra_emin = ct.c_double(inputs["right_atrium"]["emin"] * e_scale)
+    ra_emax = ct.c_double(inputs["right_atrium"]["emax"] * e_scale)
+    ra_v01 = ct.c_double(inputs["right_atrium"]["vmin"] * v_scale)
+    ra_v02 = ct.c_double(inputs["right_atrium"]["vmax"] * v_scale)
 
     # Systemic system
     pini_sys = ct.c_double(inputs["systemic"]["pini"])
-    scale_Rsys = ct.c_double(inputs["systemic"]["scale_R"])
-    scale_Csys = ct.c_double(inputs["systemic"]["scale_C"])
+    scale_Rsys = ct.c_double(inputs["systemic"]["scale_R"] * r_scale)
+    scale_Csys = ct.c_double(inputs["systemic"]["scale_C"] * c_scale)
 
     sys_ras = ct.c_double(inputs["systemic"]["ras"])
     sys_rat = ct.c_double(inputs["systemic"]["rat"])
@@ -349,8 +357,8 @@ def solve_system(
 
     # Pulmonary system
     pini_pulm = ct.c_double(inputs["pulmonary"]["pini"])
-    scale_Rpulm = ct.c_double(inputs["pulmonary"]["scale_R"])
-    scale_Cpulm = ct.c_double(inputs["pulmonary"]["scale_C"])
+    scale_Rpulm = ct.c_double(inputs["pulmonary"]["scale_R"] * r_scale)
+    scale_Cpulm = ct.c_double(inputs["pulmonary"]["scale_C"] * c_scale)
 
     pulm_ras = ct.c_double(inputs["pulmonary"]["ras"])
     pulm_rat = ct.c_double(inputs["pulmonary"]["rat"])
