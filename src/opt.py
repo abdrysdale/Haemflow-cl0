@@ -172,6 +172,7 @@ class Optimiser:
             inputs: Optional[dict] = None,
             params: Optional[dict] = None,
             pbar: bool = True,
+            pbar_pos: int = 0,
             tol: float = 0.0,
             **kwargs,
     ):
@@ -192,11 +193,15 @@ class Optimiser:
                         third as initial parameter guess.
                 pbar (bool, optional) : If True will display a progress bar.
                         Defaults to True.
+                pbar_pos (int, optional) : Position of the progress bar.
+                        Defaults to 0.
                 tol (float, optional) : Percentage tolerance for the optimiser.
                         Defaults to 0.0,
         """
 
-        self.inputs = _format_solver_inputs(inputs)
+        self.flat_inputs_raw = _flatten_dict(inputs)
+        inputs = dict() if inputs is None else inputs
+        self.inputs = _format_solver_inputs(**inputs)
         self.flat_inputs = _flatten_dict(self.inputs)
 
         # Loads the default parameters
@@ -238,13 +243,18 @@ class Optimiser:
             self.optimiser.register_callback("ask", early_stopping)
 
         # Registers progress bar
+        self.loss = np.inf
         if pbar:
-            pbar = tqdm(total=kwargs.get("budget", None))
+            pbar = tqdm(total=kwargs.get("budget", None), position=pbar_pos)
 
             def _update_pbar(*args, **kwargs):
                 pbar.update(1)
+                pbar.set_description(f"Tol: {self.loss:.3f}")
 
             self.optimiser.register_callback("tell", _update_pbar)
+
+        # Placeholder for recommendation
+        self.recommendation = None
 
     def solve_system(self, **flat_params) -> dict:
         """Solves the system.
