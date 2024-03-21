@@ -204,11 +204,19 @@ def _format_solver_inputs(
             )
         else:
             tmp_dict = dict()
+            for key in list(input_dicts[idict].keys()):
+                if key not in list(defaults[idict].keys()):
+                    logger.warning(
+                        f"Key {key} not recognised and will be ignored."
+                    )
+
             for key in list(defaults[idict].keys()):
                 tmp_dict[key] = input_dicts[idict].get(key, defaults[idict][key])
-                logger.debug(
-                    f"Parameter {idict}: {key} not supplied, loading default."
-                )
+
+                if key not in list(input_dicts[idict].keys()):
+                    logger.debug(
+                        f"{idict}: {key} not supplied, loading default."
+                    )
             inputs[idict] = tmp_dict
 
     return inputs
