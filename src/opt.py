@@ -454,10 +454,11 @@ class Optimiser:
         else:
             recommendation = self.optimiser.minimize(minimise, **kwargs)
 
-        logger.info(recommendation)
+        self.recommendation = dict(recommendation[1].value.items())
+        logger.info(self.recommendation)
 
         # Recombines optimised values into a full parameter dictionary
         full_recommendation = self.flat_inputs
-        for key, value in recommendation[1].value.items():
-            full_recommendation[key] = value
+        for key in list(self.recommendation.keys()):
+            full_recommendation[key] = self.recommendation[key]
         return _unflatten_dict(full_recommendation)
