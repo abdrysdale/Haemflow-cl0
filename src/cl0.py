@@ -75,26 +75,26 @@ def load_defaults():
         "scale_C": 0.8,         # Compliance scaling term.
         "ras": 0.003,           # Aortic sinus resistance.
         "rat": 0.05,            # Artery resistance.
-        "rar": 0.5,             # Arterioes resistance.
+        "rar": 0.5,             # Arterioles resistance.
         "rcp": 0.52,            # Capillary resistance.
         "rvn": 0.075,           # Venous resistance.
-        "cas": 0.008,           # Aortic sinus resistance.
+        "cas": 0.008,           # Aortic sinus compliance.
         "cat": 1.6,             # Artery compliance.
         "cvn": 20.5,            # Venous compliance.
         "las": 6.2e-5,          # Aortic sinus inductance.
-        "lat": 1.7e-3,          # Artery Inductance.
+        "lat": 1.7e-3,          # Artery inductance.
     }
 
     pulmonary = {
         "pini": 20,             # Initial pressure.
         "scale_R": 1,           # Resistance scaling term.
         "scale_C": 1,           # Compliance scaling term.
-        "ras": 0.002,           # Pulmonary artery resistance.
+        "ras": 0.002,           # Pulmonary artery sinus resistance.
         "rat": 0.01,            # Artery resistance.
-        "rar": 0.05,            # Arterioes resistance.
+        "rar": 0.05,            # Arterioles resistance.
         "rcp": 0.25,            # Capillary resistance.
         "rvn": 0.006,           # Venous resistance.
-        "cas": 0.18,            # Pulmonary artery resistance.
+        "cas": 0.18,            # Pulmonary artery compliance.
         "cat": 3.8,             # Artery compliance.
         "cvn": 20.5,            # Venous compliance.
         "las": 5.2e-5,          # Pulmonary artery inductance.
