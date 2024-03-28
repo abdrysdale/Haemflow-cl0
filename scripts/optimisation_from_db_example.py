@@ -29,10 +29,11 @@ def main():
         'hr', 'pr', 'qrs', 'qt',
         'core', 'core_ref', 'skin', 'skin_ref',
     )
-    cursor.execute(f"SELECT {', '.join(col_names)} FROM Model_Inputs")
-    df = pd.DataFrame(cursor.fetchall(), columns=col_names)
+    table = 'Model_Inputs_BA'
+    out_table_name = 'Model_Outputs_BA'
 
-    out_table_name = 'Model_Outputs'
+    cursor.execute(f"SELECT {', '.join(col_names)} FROM {table}")
+    df = pd.DataFrame(cursor.fetchall(), columns=col_names)
 
     prev = {
         'id': None,
@@ -63,6 +64,7 @@ def main():
                 'k_dil': 1,
                 'k_con': 1,
             }
+            new_vol = True
 
         else:
             # Diminishes the effect of the previous scale with time.
@@ -72,10 +74,18 @@ def main():
             # 0.5 * previous scale + 0.5
             # when around 30 minutes has passed the current starting scale is
             # 0.005 * previous scale + 0.995
+            # Checks if the new value is within bounds before updating
             dt = row['t'] - prev['t']
             alpha = np.exp(- np.log(2)/4 * (dt/60 - 1))
-            for key in ('e_scale', 'v_scale', 'r_scale', 'c_scale', 'k_dil', 'k_con'):
-                prev[key] = alpha * prev[key] + (1 - alpha)
+            for d in list(params.keys()):
+                for key in list(params[d].keys()):
+                    new_val = alpha * prev[key] + (1 - alpha)
+                    if d == 'thermal_system':
+                        new_val *= 75 if key == 'k_dil' else 0.5
+                    if params[d][key][0] <= new_val <= params[d][key][1]:
+                        prev[key] = alpha * prev[key] + (1 - alpha)
+
+            new_vol = False
 
         default_inputs = {
             'generic_params': {
@@ -106,7 +116,6 @@ def main():
                 "r_scale": [0.1, 10, prev['r_scale']],
                 "c_scale": [0.1, 10, prev['c_scale']],
                 'e_scale': [0.25, 4, prev['e_scale']],
-                'v_scale': [0.5, 2, prev['v_scale']],
             },
             "thermal_system": {
                 "k_dil": [37, 113, 75 * prev['k_dil']],
@@ -114,11 +123,16 @@ def main():
             },
         }
 
+        if new_vol:
+            params['generic_params']['v_scale'] = [0.9, 1.1, prev['v_scale']]
+        else:
+            inputs['generic_params']['v_scale'] = prev['v_scale']
+
         opt = Optimiser(
             optimiser="TwoPointsDE",
             inputs=inputs,
             params=params,
-            budget=10000,
+            budget=1000,
             num_workers=16,
             multi_objective=True,
             tol=1e-3,
@@ -162,11 +176,22 @@ def main():
                 pd.DataFrame([outputs]).to_sql(
                     out_table_name, con, if_exists='replace', index=False,
                 )
+                prev_loss = loss
 
             else:
                 pd.DataFrame([outputs]).to_sql(
                     out_table_name, con, if_exists='append', index=False,
                 )
+
+            if loss <= prev_loss:
+                for d in list(params.keys()):
+                    for param in list(params[d].keys()):
+                        if d == "thermal_system":
+                            def_val = 75 if param == 'k_dil' else 0.5
+                            prev[param] = best_p[d][param] / def_val
+                        else:
+                            prev[param] = best_p[d][param]
+
         tqdm._instances.clear()
 
 
