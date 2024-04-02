@@ -181,7 +181,7 @@ opt = Optimiser(
     pbar_pos=1,             # The position of the progress bar can be specified with this option.
 )
 
-# Runs the optimisor optimising for stroke volume, diastolic blood pressure and systolic blood pressure
+# Runs the optimiser optimising for stroke volume, diastolic blood pressure and systolic blood pressure
 best_params = opt.run(sbp=133, dbp=67, sv=49)
 
 # best_params will be a list of the input parameters on the Pareto frontier.
@@ -199,10 +199,10 @@ opt = Optimiser(
     optimiser="NGOpt", # Nevergrad optimiser string
     inputs={"thermal_system": {"t_cr": 38}}, # Inputs passed to the solver.
     params={"thermal_system": {"k_con": [0.25, 0.75, 0.5]}}, # [lower, upper, initial] parameter values
-    pbar=True, # Displayes a progress bar
+    pbar=True, # Displays a progress bar
     tol=1e-3, # Tolerance for early stopping
     budget=100, # These keyword arguments are passed directly to the optimiser
-    num_workers=16, # Specifying num_workers > 1 auto-matically enables parallelisation
+    num_workers=16, # Specifying num_workers > 1 automatically enables parallelisation
 )
 
 best_inputs = opt.run(
