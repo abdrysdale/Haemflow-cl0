@@ -23,15 +23,20 @@ def load_defaults():
     """Loads all of the default dictionaries for solving the system."""
 
     generic_params = {
-        "nstep": 2000,  # Number of time steps.
-        "period": 0.9,  # Cardiac period.
-        "ncycle": 10,   # Number of cardiac cycles, only last is returned.
-        "rk": 4,        # Runge-Kutta order (2 or 4).
-        "rho": 1.06,    # Density of blood.
-        "e_scale": 1,   # Scales all heart elastance
-        "v_scale": 1,   # Scales all heart volume.
-        "r_scale": 1,   # Scales all resistances.
-        "c_scale": 1,   # Scales all compliances.
+        "nstep": 2000,          # Number of time steps.
+        "period": 0.9,          # Cardiac period.
+        "ncycle": 10,           # Number of cardiac cycles, only last is returned
+        "rk": 4,                # Runge-Kutta order (2 or 4).
+        "rho": 1.06,            # Density of blood.
+        "est_h_vol": True,      # Whether to estimate heart volume
+        "height": 160,          # Height (cm)
+        "weight": 80,           # Weight (kg)
+        "age": 32,              # Age (years)
+        "sex": 1,               # Sex (0 for male, 1 for female)
+        "e_scale": 1,           # Scales all heart elastance
+        "v_scale": 1,           # Scales all heart volume.
+        "r_scale": 1,           # Scales all resistances.
+        "c_scale": 1,           # Scales all compliances.
     }
 
     ecg = {
@@ -219,6 +224,26 @@ def _format_solver_inputs(
                     )
             inputs[idict] = tmp_dict
 
+    #####################
+    # Warnings for user #
+    #####################
+    if (inputs["generic_params"]["est_h_vol"] and (
+            inputs["left_atrium"]["vmin"] != defaults["left_atrium"]["vmin"] or
+            inputs["left_atrium"]["vmax"] != defaults["left_atrium"]["vmax"] or
+            inputs["left_ventrical"]["vmin"] != defaults["left_ventrical"]["vmin"] or
+            inputs["left_ventrical"]["vmax"] != defaults["left_ventrical"]["vmax"] or
+            inputs["right_atrium"]["vmin"] != defaults["right_atrium"]["vmin"] or
+            inputs["right_atrium"]["vmax"] != defaults["right_atrium"]["vmax"] or
+            inputs["right_ventrical"]["vmin"] != defaults["right_ventrical"]["vmin"] or
+            inputs["right_ventrical"]["vmax"] != defaults["right_ventrical"]["vmax"]
+    )):
+        logger.warning(
+            "You have manually set a heart chamber volume "
+            "and specified to estimate the heart volume.\n"
+            "The specified heart chamber volume will be overwritten by the estimate.\n"
+            "If you do not want this, set est_h_vol to False."
+        )
+
     return inputs
 
 
@@ -316,6 +341,11 @@ def solve_system(
     ncycle = ct.c_int(inputs["generic_params"]["ncycle"])
     ncycle = ct.c_int(inputs["generic_params"]["ncycle"])
     rk = ct.c_int(inputs["generic_params"]["rk"])
+    est_h_vol = ct.c_bool(inputs["generic_params"]["est_h_vol"])
+    height = ct.c_double(inputs["generic_params"]["height"])
+    weight = ct.c_double(inputs["generic_params"]["weight"])
+    age = ct.c_double(inputs["generic_params"]["age"])
+    sex = ct.c_double(inputs["generic_params"]["sex"])
     rho = ct.c_double(inputs["generic_params"]["rho"])
     e_scale = inputs["generic_params"]["e_scale"]
     v_scale = inputs["generic_params"]["v_scale"]
@@ -439,6 +469,7 @@ def solve_system(
         la_emin, la_emax, la_v01, la_v02,
         rv_emin, rv_emax, rv_v01, rv_v02,
         ra_emin, ra_emax, ra_v01, ra_v02,
+        est_h_vol, height, weight, age, sex,
         pini_sys, scale_Rsys, scale_Csys,
         sys_ras, sys_rat, sys_rar, sys_rcp, sys_rvn,
         sys_cas, sys_cat, sys_cvn, sys_las, sys_lat,
