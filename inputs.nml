@@ -5,6 +5,11 @@ ncycle=10
 pini_sys=80
 pini_pulm=20
 rk=4
+est_h_vol=T
+height=160.0
+weight=80.0
+age=32.0
+sex=1.0
 /
 &VALVES
 AV%Leff=1

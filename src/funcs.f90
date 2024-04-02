@@ -203,6 +203,11 @@ contains
          LA_in, &
          RV_in, &
          RA_in, &
+         estimate_vol, &
+         height, &
+         weight, &
+         age, &
+         sex, &
          t1, &
          t2, &
          t3, &
@@ -217,6 +222,8 @@ contains
       real(dp), intent(in) :: t1, t2, t3, t4
       type (arterial_system), intent(in) :: sys_in, pulm_in
       type (chamber), intent(in) :: LV_in, LA_in, RV_in, RA_in
+      logical, intent(in) :: estimate_vol
+      real(dp), intent(in) :: height, weight, age, sex
       type (thermal_system), intent(in) :: therm
 
       ! Declare temp variables
@@ -260,6 +267,11 @@ contains
       RA = RA_in
       call heart_input(LV, LA, RV, RA, scale_EmaxLV, scale_EmaxRV, scale_Emax)
       h_cof = chambers(LV, LA, RV, RA)
+
+      ! If estimate_vol, uses height, weight, age and sex to estimate heart volume
+      if ( estimate_vol ) then
+         call update_heart_vol(h_cof, height, weight, age, sex)
+      end if
 
       ! Relevant valve coefficients
       v_cof = valve_system(AV, MV, PV, TV)

@@ -8,6 +8,8 @@ The model is implemented in Fortran but supplied with a Python wrapper.
 
 - Able to supply heart elastance curves based on ECG timings.
 - Thermoregulation model adjusts systemic capillary resistance based of core and skin temperature.
+- Packaged with an (multi-objective) optimiser to optimise for stroke volume, systolic and diastolic blood pressure, total arterial resistance and total peripheral compliance.
+- Able to specify heart volume from age, weight, height and sex.
 
 ## Installation
 
@@ -31,7 +33,7 @@ Dependencies can be found in `shell.nix`, if you use [nix](https://nixos.org/), 
 
 4. Run the example.
 
-There is an example script in `scripts/`, run it to test everything works.
+There are example scripts in `scripts/`, run it to test everything works.
 
 ```sh
 python thermoregulation_example.py
@@ -77,6 +79,59 @@ sol = solve_system(
     thermal_system={'k_dil': 0, 'k_con': 0}, # Disables thermoregulation
     )
 ```
+
+Heart volume can be specified by height, weight, age and sex
+```python
+sol = solve_system(
+    generic_params={
+        'est_h_vol': True,
+        'height': 160,  # Height (cm)
+        'weight': 80,   # Weight (kg)
+        'age': 32,      # Age (years)
+        'sex': 1,       # Sex (1 for female, 0 for male)
+    }
+)
+```
+
+Note that setting 'est_h_vol' to 'True' in the above enables the calculation of the heart volume from
+height, weight, age and sex. If heart chamber volumes are specified, they will be overwritten by the
+estimated heart volume.
+
+For instance:
+```python
+sol_1 = solve_system(
+    generic_params={
+        'est_h_vol': True,
+        'height': 160,  # Height (cm)
+        'weight': 80,   # Weight (kg)
+        'age': 32,      # Age (years)
+        'sex': 1,       # Sex (1 for female, 0 for male)
+    }
+    )
+    
+sol_2 = solve_system(
+    generic_params={
+        'est_h_vol': True,
+        'height': 160,  # Height (cm)
+        'weight': 80,   # Weight (kg)
+        'age': 32,      # Age (years)
+        'sex': 1,       # Sex (1 for female, 0 for male)
+    left_ventrical={'vmin': 20, 'vmax': 150} # Sets the minimum and maximum volume
+    }
+    )
+
+# sol_1 and sol_2 will yield exactly the same result.
+```
+
+Some points to consider if using the heart volume estimations:
+
+- The heart volume estimation is based off mostly white Europeans. If data from other ethnicities becomes available I will update the heart volume estimation ASAP.
+- The heart volume is typically over estimated as the estimator was tuned for 2D measurements.
+- The heart volume estimation is based off healthy participants and will not be accurate for people with heart defects or abnormalities.
+- The original data includes no trans people so may not be accurate for trans people.
+- Right ventricle volume estimation is not provided and estimated from the other chamber volume estimation.
+- For more information on the implementation, see the `update_heart_vol` subroutine in `src/elastance.f90`.
+- For more information on the heart volume estimation see https://doi.org/10.1161/CIRCIMAGING.113.000690
 
 `solve_system_parallel` provides a wrapper around the `solve_system` function but launches processes in parallel.
 
@@ -243,11 +298,20 @@ The default values are as follows:
 
 ```python
     generic_params = {
-        "nstep": 2000,  # Number of time steps.
-        "period": 0.9,  # Cardiac period.
-        "ncycle": 10,   # Number of cardiac cycles, only last is returned.
-        "rk": 4,        # Runge-Kutta order (2 or 4).
-        "rho": 1.06,    # Density of blood.
+        "nstep": 2000,          # Number of time steps.
+        "period": 0.9,          # Cardiac period.
+        "ncycle": 10,           # Number of cardiac cycles, only last is returned.
+        "rk": 4,                # Runge-Kutta order (2 or 4).
+        "rho": 1.06,            # Density of blood.
+        "est_h_vol": True,      # Whether to estimate heart volume
+        "height": 160,          # Height (cm)
+        "weight": 80,           # Weight (kg)
+        "age": 32,              # Age (years)
+        "sex": 1,               # Sex (0 for male, 1 for female)
+        "e_scale": 1,           # Scales all heart elastance
+        "v_scale": 1,           # Scales all heart volume.
+        "r_scale": 1,           # Scales all resistances.
+        "c_scale": 1,           # Scales all compliances.
     }
 
     ecg = {
