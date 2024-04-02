@@ -130,7 +130,7 @@ contains
       !!! Checks inputs !!!
       !!!!!!!!!!!!!!!!!!!!!
 
-      if ( (abs(sex_in) <= 1e-5_dp) .and. (abs(sex_in - 1.0_dp) <= 1e-5_dp) ) then
+      if ( (abs(sex_in) >= 1e-5_dp) .and. (abs(sex_in - 1.0_dp) >= 1e-5_dp) ) then
          print *,"Sex is not 0 (male) or 1 (female). Setting to 1."
          sex = 1.0_dp
       else
@@ -157,7 +157,10 @@ contains
       else
          age = age_in
       end if
-        
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! Calculates heart volume !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       lv_i = -39.37731_dp
       lv_w = 0.42808_dp
