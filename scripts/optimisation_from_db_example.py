@@ -64,7 +64,7 @@ def main():
                 'k_dil': 1,
                 'k_con': 1,
             }
-            new_vol = True
+            new_pid = True
 
         else:
             # Diminishes the effect of the previous scale with time.
@@ -85,7 +85,7 @@ def main():
                     if params[d][key][0] <= new_val <= params[d][key][1]:
                         prev[key] = alpha * prev[key] + (1 - alpha)
 
-            new_vol = False
+            new_pid = False
 
         default_inputs = {
             'generic_params': {
@@ -123,7 +123,7 @@ def main():
             },
         }
 
-        if new_vol:
+        if new_pid:
             params['generic_params']['v_scale'] = [0.9, 1.1, prev['v_scale']]
         else:
             inputs['generic_params']['v_scale'] = prev['v_scale']
