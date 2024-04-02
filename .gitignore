@@ -6,3 +6,4 @@
 /src/__pycache__/
 /output.csv
 *.hdf5
+*.sif
