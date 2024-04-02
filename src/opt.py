@@ -175,6 +175,7 @@ class Optimiser:
             pbar: bool = True,
             pbar_pos: int = 0,
             tol: float = 0.0,
+            multi_objective: bool = False,
             **kwargs,
     ):
         """Initialises the optimiser
@@ -198,6 +199,9 @@ class Optimiser:
                         Defaults to 0.
                 tol (float, optional) : Percentage tolerance for the optimiser.
                         Defaults to 0.0,
+                multi_objective (bool, optional) : Whether to perform 
+                        multi-objective optimisation.
+                        Defaults to False.
         """
 
         self.flat_inputs_raw = _flatten_dict(inputs)
@@ -258,6 +262,9 @@ class Optimiser:
                 pbar.set_description(f"Tol: {self.loss:.4f}")
 
             self.optimiser.register_callback("tell", _update_pbar)
+
+        # Multi-objective optimisation
+        self.multi_objective = multi_objective
 
         # Placeholder for recommendation
         self.recommendation = None
@@ -363,6 +370,7 @@ class Optimiser:
             sv: Optional[float] = None,
             tpr: Optional[float] = None,
             tac: Optional[float] = None,
+            p: float = 2.0,
             **kwargs
     ) -> dict:
         """Runs the optimiser.
@@ -388,18 +396,32 @@ class Optimiser:
                 tac (float, optional) : Total arterial compliance.
                         If None, will not be included in optimisation.
                         Defaults to None.
+                p (float, optional) : Uses L_p norm to convert multi-objective
+                        optimisation into a single objective optimisation
+                        problem. Defaults to 2.
         """
 
         logger.info(
             f"Optimisation started with {self.optimiser.dimension} parameters."
         )
 
-        if not any([
-                False if m is None else True for m in
-                (sbp, dbp, co, sv, tpr, tac)
-        ]):
+        num_objectives = sum([
+            0 if m is None else 1 for m in
+            (sbp, dbp, co, sv, tpr, tac)
+        ])
+
+        if num_objectives == 0:
             logger.critical("You haven't set anything to optimise for?!\n")
             raise ValueError('No optimisation criteria specified.')
+
+        elif num_objectives == 1 and self.multi_objective:
+            logger.critical(
+                "You have specified multi-objective optimisation "
+                "but only provided 1 optimisation objective."
+            )
+            raise ValueError(
+                "Only 1 objective for multi-objective optimisation."
+            )
 
         if co is not None and sv is not None:
             logger.warning(
@@ -409,41 +431,51 @@ class Optimiser:
                 "and you know what you're doing."
             )
 
+        if self.multi_objective:
+            self.optimiser.tell(
+                ng.p.MultiobjectiveReference(),
+                [10 for _ in range(num_objectives)],
+            )
+
         # Minimisation function
         def minimise(*args, **kwargs):
             sol = self.solve_system(*args, **kwargs)
 
-            loss = 0
+            loss = []
 
             # Systemic Systolic and Diastolic Blood Pressure
             if sbp is not None or dbp is not None:
                 sys, dia = self.get_systemic_sysdia_pres(sol)
                 if sbp is not None:
-                    loss += np.abs(sys - sbp) / sbp
+                    loss.append(np.abs(sys - sbp) / sbp)
                 if dbp is not None:
-                    loss += np.abs(dia - dbp) / dbp
+                    loss.append(np.abs(dia - dbp) / dbp)
 
             # Cardiac Output
             if co is not None:
                 cardiac_output = self.get_cardiac_output(sol)
-                loss += np.abs(cardiac_output - co) / co
+                loss.append(np.abs(cardiac_output - co) / co)
 
             # Stroke Volume
             if sv is not None:
                 stroke_volume = self.get_stroke_volume(sol)
-                loss += np.abs(stroke_volume - sv) / sv
+                loss.append(np.abs(stroke_volume - sv) / sv)
 
             # Total peripheral resistance
             if tpr is not None:
                 total_peripheral_R = self.get_total_peripheral_resistance(sol)
-                loss += np.abs(total_peripheral_R - tpr) / tpr
+                loss.append(np.abs(total_peripheral_R - tpr) / tpr)
 
             # Total arterial compliance
             if tac is not None:
                 total_arterial_C = self.get_total_arterial_compliance(sol)
-                loss += np.abs(total_arterial_C - tac) / tac
+                loss.append(np.abs(total_arterial_C - tac) / tac)
 
-            self.loss = loss
+            if self.multi_objective:
+                self.loss = np.sum(loss)
+            else:
+                loss = np.sum([x ** p for x in loss])
+                self.loss = loss
 
             return loss
 
@@ -460,10 +492,27 @@ class Optimiser:
         else:
             recommendation = self.optimiser.minimize(minimise, **kwargs)
 
-        self.recommendation = dict(recommendation[1].value.items())
+        if self.multi_objective:
+            self.recommendation = [
+                pf.value[1] for pf in sorted(
+                    self.optimiser.pareto_front(), key=lambda p: p.losses[0]
+                )
+            ]
+        else:
+            self.recommendation = dict(recommendation[1].value.items())
+
         logger.info(self.recommendation)
 
         # Recombines optimised values into a full parameter dictionary
+        if self.multi_objective:
+            full_recommendation = []
+            for rec in self.recommendation:
+                full_rec = self.flat_inputs
+                for key in list(rec.keys()):
+                    full_rec[key] = rec[key]
+                full_recommendation.append(_unflatten_dict(full_rec))
+            return full_recommendation
+
         full_recommendation = self.flat_inputs
         for key in list(self.recommendation.keys()):
             full_recommendation[key] = self.recommendation[key]

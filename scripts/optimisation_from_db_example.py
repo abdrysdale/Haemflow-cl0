@@ -29,10 +29,11 @@ def main():
         'hr', 'pr', 'qrs', 'qt',
         'core', 'core_ref', 'skin', 'skin_ref',
     )
-    cursor.execute(f"SELECT {', '.join(col_names)} FROM Model_Inputs")
-    df = pd.DataFrame(cursor.fetchall(), columns=col_names)
+    table = 'Model_Inputs_BA'
+    out_table_name = 'Model_Outputs_BA'
 
-    out_table_name = 'Model_Outputs'
+    cursor.execute(f"SELECT {', '.join(col_names)} FROM {table}")
+    df = pd.DataFrame(cursor.fetchall(), columns=col_names)
 
     prev = {
         'id': None,
@@ -63,7 +64,7 @@ def main():
                 'k_dil': 1,
                 'k_con': 1,
             }
-            new_trial = True
+            new_pid = True
 
         else:
             # Diminishes the effect of the previous scale with time.
@@ -73,11 +74,18 @@ def main():
             # 0.5 * previous scale + 0.5
             # when around 30 minutes has passed the current starting scale is
             # 0.005 * previous scale + 0.995
+            # Checks if the new value is within bounds before updating
             dt = row['t'] - prev['t']
             alpha = np.exp(- np.log(2)/4 * (dt/60 - 1))
-            for key in ('e_scale', 'v_scale', 'r_scale', 'c_scale', 'k_dil', 'k_con'):
-                prev[key] = alpha * prev[key] + (1 - alpha)
-            new_trial = False
+            for d in list(params.keys()):
+                for key in list(params[d].keys()):
+                    new_val = alpha * prev[key] + (1 - alpha)
+                    if d == 'thermal_system':
+                        new_val *= 75 if key == 'k_dil' else 0.5
+                    if params[d][key][0] <= new_val <= params[d][key][1]:
+                        prev[key] = alpha * prev[key] + (1 - alpha)
+
+            new_pid = False
 
         default_inputs = {
             'generic_params': {
@@ -97,76 +105,6 @@ def main():
             },
         }
 
-        ################################
-        # Optimises for blood pressure #
-        ################################
-
-        # Blood pressure needs to be optimised first as this has a significant
-        # effect on the maximal value of stroke volume.
-
-        inputs = default_inputs
-        inputs['generic_params']['e_scale'] = prev['e_scale']
-        inputs['generic_params']['v_scale'] = prev['v_scale']
-
-        params = {
-            "generic_params": {
-                "r_scale": [0.1, 10, prev['r_scale']],
-                "c_scale": [0.1, 10, prev['c_scale']],
-            },
-        }
-
-        opt = Optimiser(
-            optimiser="NelderMead",
-            inputs=inputs,
-            params=params,
-            budget=1000,
-            num_workers=1,
-            tol=1e-3,
-            pbar=True,
-            pbar_pos=1,
-        )
-
-        best_params = opt.run(sbp=row['sys'], dbp=row['dia'])
-        sol = solve_system(**best_params)
-
-        prev['r_scale'] = best_params['generic_params']['r_scale']
-        prev['c_scale'] = best_params['generic_params']['c_scale']
-
-        ###############################
-        # Optimises for stroke volume #
-        ###############################
-
-        inputs = default_inputs
-        inputs['generic_params']['r_scale'] = prev['r_scale']
-        inputs['generic_params']['c_scale'] = prev['c_scale']
-
-        params = {
-            "generic_params": {
-                'e_scale': [0.25, 4, prev['e_scale']],
-            },
-        }
-
-        if new_trial:
-            params['generic_params']['v_scale'] = [0.5, 2, prev['v_scale']],
-
-        opt = Optimiser(
-            optimiser="NelderMead",
-            inputs=inputs,
-            params=params,
-            budget=1000,
-            num_workers=1,
-            tol=1e-3,
-            pbar=True,
-            pbar_pos=2,
-        )
-
-        best_params = opt.run(sv=row['sv'])
-        sol = solve_system(**best_params)
-
-        prev['e_scale'] = best_params['generic_params']['e_scale']
-        if new_trial:
-            prev['v_scale'] = best_params['generic_params']['v_scale']
-
         ###################################################
         # Optimises for blood pressure and stroke volume  #
         ###################################################
@@ -178,7 +116,6 @@ def main():
                 "r_scale": [0.1, 10, prev['r_scale']],
                 "c_scale": [0.1, 10, prev['c_scale']],
                 'e_scale': [0.25, 4, prev['e_scale']],
-                'v_scale': [0.5, 2, prev['v_scale']],
             },
             "thermal_system": {
                 "k_dil": [37, 113, 75 * prev['k_dil']],
@@ -186,57 +123,75 @@ def main():
             },
         }
 
+        if new_pid:
+            params['generic_params']['v_scale'] = [0.9, 1.1, prev['v_scale']]
+        else:
+            inputs['generic_params']['v_scale'] = prev['v_scale']
+
         opt = Optimiser(
-            optimiser="NelderMead",
+            optimiser="TwoPointsDE",
             inputs=inputs,
             params=params,
             budget=1000,
-            num_workers=1,
+            num_workers=16,
+            multi_objective=True,
             tol=1e-3,
             pbar=True,
-            pbar_pos=3,
+            pbar_pos=1,
         )
 
         best_params = opt.run(sbp=row['sys'], dbp=row['dia'], sv=row['sv'])
-        sol = solve_system(**best_params)
-
-        prev['r_scale'] = best_params['generic_params']['r_scale']
-        prev['c_scale'] = best_params['generic_params']['c_scale']
-        prev['e_scale'] = best_params['generic_params']['e_scale']
-        prev['v_scale'] = best_params['generic_params']['v_scale']
-        prev['k_dil'] = best_params['thermal_system']['k_dil'] / 75
-        prev['k_con'] = best_params['thermal_system']['k_con'] / 0.5
 
         #####################
         # Saves the results #
         #####################
 
-        systolic, diastolic = opt.get_systemic_sysdia_pres(sol)
-        sv = opt.get_stroke_volume(sol)
+        for j, best_p in enumerate(best_params):
+            sol = solve_system(**best_p)
 
-        outputs = {
-            'id': row['id'],
-            'temp': row['temp'],
-            't': row['t'],
-            'sys': systolic,
-            'sys_target': row['sys'],
-            'dia': diastolic,
-            'dia_target': row['dia'],
-            'sv': sv,
-            'sv_target': row['sv'],
-            **opt.flat_inputs_raw,
-            **opt.recommendation,
-        }
-
-        if i == 0:
-            pd.DataFrame([outputs]).to_sql(
-                out_table_name, con, if_exists='replace', index=False,
+            systolic, diastolic = opt.get_systemic_sysdia_pres(sol)
+            sv = opt.get_stroke_volume(sol)
+            loss = (
+                np.abs(systolic - row['sys']) / row['sys']
+                + np.abs(diastolic - row['dia']) / row['dia']
+                + np.abs(sv - row['sv']) / row['sv']
             )
 
-        else:
-            pd.DataFrame([outputs]).to_sql(
-                out_table_name, con, if_exists='append', index=False,
-            )
+            outputs = {
+                'id': row['id'],
+                'temp': row['temp'],
+                't': row['t'],
+                'sys': systolic,
+                'sys_target': row['sys'],
+                'dia': diastolic,
+                'dia_target': row['dia'],
+                'sv': sv,
+                'sv_target': row['sv'],
+                'loss': loss,
+                **opt.flat_inputs_raw,
+                **opt.recommendation[j],
+            }
+
+            if i == 0 and j == 0:
+                pd.DataFrame([outputs]).to_sql(
+                    out_table_name, con, if_exists='replace', index=False,
+                )
+                prev_loss = loss
+
+            else:
+                pd.DataFrame([outputs]).to_sql(
+                    out_table_name, con, if_exists='append', index=False,
+                )
+
+            if loss <= prev_loss:
+                for d in list(params.keys()):
+                    for param in list(params[d].keys()):
+                        if d == "thermal_system":
+                            def_val = 75 if param == 'k_dil' else 0.5
+                            prev[param] = best_p[d][param] / def_val
+                        else:
+                            prev[param] = best_p[d][param]
+
         tqdm._instances.clear()
 
 

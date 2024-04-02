@@ -113,6 +113,85 @@ The `Optimiser`, is used to tune the network to yield certain physiological resp
 
 Any optimiser included with [nevergrad](https://facebookresearch.github.io/nevergrad/index.html) should work fine.
 
+When using multiple objectives, it is recommended to use a multi-objective optimisation algorithm.
+A good choice for this problem is the `TwoPointsDE` algorithm due to the cheap computational cost of the 
+solver.
+
+When using a multi-objective optimiser, the Pareto frontier is returned rather than the single best result.
+
+A full example script highlighting this is [scripts/optimisation_from_db_example.py](scripts/optimisation_from_db_example.py)
+which performs multi-objective optimisation for each row in a SQLite database.
+
+```python
+from src import Optimiser, solve_system
+
+hr = 89         # Heart Rate in BPM
+
+pr = 0.142      # PR interval (s)
+qrs = 0.08      # QRS interval (s)
+qt = 0.38       # QT interval (s)
+
+core = 37.48    # Core temperature (°C)
+core_ref = 36.8 # Reference core temperature (°C)
+skin = 24.23    # Skin temperature (°C)
+skin_ref = 34.1 # Reference skin temperature (°C)
+
+# These inputs will be fixed for the optimisation.
+inputs = {
+    'generic_params': {
+        'period': 60/hr,
+    },
+    'ecg': {
+        "t1": pr / 3,
+        "t2": pr + qrs/2,
+        "t3": pr + qrs + 0.75 * (qt - qrs),
+        "t4": pr + qt,
+    },
+    'thermal_system': {
+        't_cr': core,
+        't_cr_ref': core_ref,
+        't_sk': skin,
+        't_sk_ref': skin_ref,
+    },
+}
+
+# These inputs will be allowed to change for the optimisation.
+params = {
+    "generic_params": {
+        "r_scale": [0.1, 10, 1],
+        "c_scale": [0.1, 10, 1],
+        'e_scale': [0.25, 4, 1],
+    },
+    "thermal_system": {
+        "k_dil": [37, 113, 75],
+        "k_con": [0.25, 0.75, 0.5],
+    },
+}
+
+# Sets up the optimiser
+opt = Optimiser(
+    optimiser="TwoPointsDE",
+    inputs=inputs,
+    params=params,
+    budget=1000,
+    num_workers=16,
+    multi_objective=True,   # This flag is really important!
+    tol=1e-3,
+    pbar=True,              # This shows a progress bar for the optimisation.
+    pbar_pos=1,             # The position of the progress bar can be specified with this option.
+)
+
+# Runs the optimiser optimising for stroke volume, diastolic blood pressure and systolic blood pressure
+best_params = opt.run(sbp=133, dbp=67, sv=49)
+
+# best_params will be a list of the input parameters on the Pareto frontier.
+print(best_params)
+
+# This can also be accessed with:
+print(opt.flat_inputs_raw)  # For a list of flattened dictionaries.
+print(opt.recommendation)   # For a list of nested dictionaries.
+```
+
 ```python
 from src import Optimiser, solve_system
 
@@ -120,10 +199,10 @@ opt = Optimiser(
     optimiser="NGOpt", # Nevergrad optimiser string
     inputs={"thermal_system": {"t_cr": 38}}, # Inputs passed to the solver.
     params={"thermal_system": {"k_con": [0.25, 0.75, 0.5]}}, # [lower, upper, initial] parameter values
-    pbar=True, # Displayes a progress bar
+    pbar=True, # Displays a progress bar
     tol=1e-3, # Tolerance for early stopping
     budget=100, # These keyword arguments are passed directly to the optimiser
-    num_workers=16, # Specifying num_workers > 1 auto-matically enables parallelisation
+    num_workers=16, # Specifying num_workers > 1 automatically enables parallelisation
 )
 
 best_inputs = opt.run(
