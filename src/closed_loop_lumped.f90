@@ -4,6 +4,7 @@ subroutine closed_loop_lumped(nstep, &
      la_emin, la_emax, la_v01, la_v02, &
      rv_emin, rv_emax, rv_v01, rv_v02, &
      ra_emin, ra_emax, ra_v01, ra_v02, &
+     est_h_vol, height, weight, age, sex, &
      pini_sys, scale_Rsys, scale_Csys, &
      sys_ras, sys_rat, sys_rar, sys_rcp, sys_rvn, &
      sys_cas, sys_cat, sys_cvn, sys_las, sys_lat, &
@@ -34,6 +35,8 @@ subroutine closed_loop_lumped(nstep, &
   real(c_double), intent(in), value :: la_emin, la_emax, la_v01, la_v02
   real(c_double), intent(in), value :: rv_emin, rv_emax, rv_v01, rv_v02
   real(c_double), intent(in), value :: ra_emin, ra_emax, ra_v01, ra_v02
+  logical(c_bool), intent(in), value :: est_h_vol
+  real(c_double), intent(in), value :: height, weight, age, sex
   real(c_double), intent(in), value :: sys_ras, sys_rat, sys_rar, sys_rcp, sys_rvn
   real(c_double), intent(in), value :: sys_cas, sys_cat, sys_cvn, sys_las, sys_lat
   real(c_double), intent(in), value :: pulm_ras, pulm_rat, pulm_rar, pulm_rcp, pulm_rvn
@@ -98,6 +101,7 @@ subroutine closed_loop_lumped(nstep, &
        real(rho, dp), sys, pulm, &
        real(scale_EmaxLV, dp), real(scale_EmaxRV, dp), real(scale_Emax, dp), &
        LV, LA, RV, RA, &
+       logical(est_h_vol), real(height, dp), real(weight, dp), real(age, dp), real(sex, dp), &
        real(t1, dp), real(t2, dp), real(t3, dp), real(t4, dp), &
        therm)
 

@@ -8,12 +8,9 @@ program main
     implicit none
 
     ! Declares initial variables
-    integer :: nstep, ncycle, rk, i, icycle, k, io, nan_count, inf_count
-    real(dp) :: T, pini_sys, pini_pulm, h, t_val
-    type (arterial_network) :: a_cof
-    type (chambers) :: h_cof
+    integer :: nstep, ncycle, rk, i, k, io, nan_count, inf_count
+    real(dp) :: T, pini_sys, pini_pulm
     type (valve) :: AV, MV, PV, TV
-    real(dp), allocatable, dimension(:) :: ELV, ELA, ERV, ERA
     real(dp), allocatable :: sol(:, :)
     character(len=50), dimension(31) :: headers
     real(dp) :: scale_Rsys, scale_Csys, scale_Rpulm, scale_Cpulm
@@ -22,12 +19,14 @@ program main
     type (arterial_system) :: sys
     type (arterial_system) :: pulm
     type (chamber) :: LV, LA, RV, RA
+    real(dp) :: height, weight, age, sex
+    logical :: est_h_vol
     real(dp) :: t1, t2, t3, t4
     type (thermal_system) :: therm
 
 
     ! Declares the namelists
-    namelist /INPUTS/ nstep, T, ncycle, pini_sys, pini_pulm, rk
+    namelist /INPUTS/ nstep, T, ncycle, pini_sys, pini_pulm, rk, est_h_vol, height, weight, age, sex
     namelist /VALVES/ AV, MV, PV, TV
     namelist /ARTERIES/ scale_Rsys, scale_Csys, scale_Rpulm, scale_Cpulm, rho, sys, pulm
     namelist /HEART/ scale_EmaxLV, scale_EmaxRV, scale_Emax, LV, LA, RV, RA
@@ -85,6 +84,7 @@ program main
          rho, sys, pulm, &
          scale_EmaxLV, scale_EmaxRV, scale_Emax, &
          LV, LA, RV, RA, &
+         est_h_vol, height, weight, age, sex, &
          t1, t2, t3, t4, &
          therm &
          )
