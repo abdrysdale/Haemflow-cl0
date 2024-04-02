@@ -39,6 +39,38 @@ There are example scripts in `scripts/`, run it to test everything works.
 python thermoregulation_example.py
 ```
 
+### Docker/Singularity run script
+
+1. Clone this repository:
+
+```sh
+git clone git@gitlab.com:abdrysdale/closed_loop_lumped.git
+```
+
+2. Build the container.
+
+```sh
+chmod +x run.sh
+./run.sh -b
+```
+
+3. Run the code.
+
+There are example scripts in `scripts/` but to test everything works, run the main script:
+
+```sh
+./run.sh src/cl0.py
+```
+
+alternatively to run the Fortran code directly:
+
+```sh
+./run.sh -e ./closed_loop_lumped
+```
+
+If you don't wish to use the `run.sh` script, inspect its contents to see the default docker/singularity commands.
+
+
 ## Usage
 
 This module provides the functions:
