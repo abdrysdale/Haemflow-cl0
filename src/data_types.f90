@@ -20,9 +20,9 @@ module data_types
 
     ! Declares the type for all 4 heart chambers
     type :: chambers
-        type (chamber) :: LV ! Left ventrical
+        type (chamber) :: LV ! Left ventricle
         type (chamber) :: LA ! Left atrium
-        type (chamber) :: RV ! Right ventrical
+        type (chamber) :: RV ! Right ventricle
         type (chamber) :: RA ! Right atrium
      end type chambers
 
@@ -66,9 +66,9 @@ module data_types
 
     ! Declares the heart elastance type
     type :: heart_elastance
-        real(dp), allocatable :: ELV(:) ! Elastance curve for the left ventrical
+        real(dp), allocatable :: ELV(:) ! Elastance curve for the left ventricle
         real(dp), allocatable :: ELA(:) ! Elastance curve for the left atrium
-        real(dp), allocatable :: ERV(:) ! Elastance curve for the right ventrical
+        real(dp), allocatable :: ERV(:) ! Elastance curve for the right ventricle
         real(dp), allocatable :: ERA(:) ! Elastance curve for the right atrium
      end type heart_elastance
 

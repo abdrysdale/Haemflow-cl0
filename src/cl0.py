@@ -46,7 +46,7 @@ def load_defaults():
         "t4": 0.522,    # Time of end of T wave.
     }
 
-    left_ventrical = {
+    left_ventricle = {
         "emin": 0.1,    # Minimum elastance.
         "emax": 0.5,    # Maximum elastance.
         "vmin": 10,     # Minimum volume.
@@ -60,7 +60,7 @@ def load_defaults():
         "vmax": 27,
     }
 
-    right_ventrical = {
+    right_ventricle = {
         "emin": 0.1,
         "emax": 0.92,
         "vmin": 55,
@@ -151,9 +151,9 @@ def load_defaults():
     defaults = {
         "generic_params": generic_params,
         "ecg": ecg,
-        "left_ventrical": left_ventrical,
+        "left_ventricle": left_ventricle,
         "left_atrium": left_atrium,
-        "right_ventrical": right_ventrical,
+        "right_ventricle": right_ventricle,
         "right_atrium": right_atrium,
         "systemic": systemic,
         "pulmonary": pulmonary,
@@ -170,9 +170,9 @@ def load_defaults():
 def _format_solver_inputs(
         generic_params: Optional[dict] = None,
         ecg: Optional[dict] = None,
-        left_ventrical: Optional[dict] = None,
+        left_ventricle: Optional[dict] = None,
         left_atrium: Optional[dict] = None,
-        right_ventrical: Optional[dict] = None,
+        right_ventricle: Optional[dict] = None,
         right_atrium: Optional[dict] = None,
         systemic: Optional[dict] = None,
         pulmonary: Optional[dict] = None,
@@ -185,9 +185,9 @@ def _format_solver_inputs(
     input_dicts = {
         "generic_params": generic_params,
         "ecg": ecg,
-        "left_ventrical": left_ventrical,
+        "left_ventricle": left_ventricle,
         "left_atrium": left_atrium,
-        "right_ventrical": right_ventrical,
+        "right_ventricle": right_ventricle,
         "right_atrium": right_atrium,
         "systemic": systemic,
         "pulmonary": pulmonary,
@@ -230,12 +230,12 @@ def _format_solver_inputs(
     if (inputs["generic_params"]["est_h_vol"] and (
             inputs["left_atrium"]["vmin"] != defaults["left_atrium"]["vmin"] or
             inputs["left_atrium"]["vmax"] != defaults["left_atrium"]["vmax"] or
-            inputs["left_ventrical"]["vmin"] != defaults["left_ventrical"]["vmin"] or
-            inputs["left_ventrical"]["vmax"] != defaults["left_ventrical"]["vmax"] or
+            inputs["left_ventricle"]["vmin"] != defaults["left_ventricle"]["vmin"] or
+            inputs["left_ventricle"]["vmax"] != defaults["left_ventricle"]["vmax"] or
             inputs["right_atrium"]["vmin"] != defaults["right_atrium"]["vmin"] or
             inputs["right_atrium"]["vmax"] != defaults["right_atrium"]["vmax"] or
-            inputs["right_ventrical"]["vmin"] != defaults["right_ventrical"]["vmin"] or
-            inputs["right_ventrical"]["vmax"] != defaults["right_ventrical"]["vmax"]
+            inputs["right_ventricle"]["vmin"] != defaults["right_ventricle"]["vmin"] or
+            inputs["right_ventricle"]["vmax"] != defaults["right_ventricle"]["vmax"]
     )):
         logger.warning(
             "You have manually set a heart chamber volume "
@@ -250,9 +250,9 @@ def _format_solver_inputs(
 def solve_system(
         generic_params: Optional[dict] = None,
         ecg: Optional[dict] = None,
-        left_ventrical: Optional[dict] = None,
+        left_ventricle: Optional[dict] = None,
         left_atrium: Optional[dict] = None,
-        right_ventrical: Optional[dict] = None,
+        right_ventricle: Optional[dict] = None,
         right_atrium: Optional[dict] = None,
         systemic: Optional[dict] = None,
         pulmonary: Optional[dict] = None,
@@ -273,11 +273,11 @@ def solve_system(
     ecg (dict, optional) : A dictionary containing: 't1' (location of the P peak),
         't2' (location of the R peak), 't3' (location of the T peak)
         and 't4' (location of the end of the T peak - also called T offset).
-    left_ventrical (dict, optional) : A dictionary containing 'emin' (minimum elastance),
+    left_ventricle (dict, optional) : A dictionary containing 'emin' (minimum elastance),
         'emax' (maximum elastance), 'vmin' (minimum volume) and 'vmax' (maximum volume).
     left_atrium (dict, optional) : A dictionary containing 'emin' (minimum elastance),
         'emax' (maximum elastance), 'vmin' (minimum volume) and 'vmax' (maximum volume)
-    right_ventrical (dict, optional) : A dictionary containing 'emin' (minimum elastance),
+    right_ventricle (dict, optional) : A dictionary containing 'emin' (minimum elastance),
         'emax' (maximum elastance), 'vmin' (minimum volume) and 'vmax' (maximum volume)..
     right_atrium (dict, optional) : A dictionary containing 'emin' (minimum elastance),
         'emax' (maximum elastance), 'vmin' (minimum volume) and 'vmax' (maximum volume).
@@ -323,7 +323,7 @@ def solve_system(
     ###############
     inputs = _format_solver_inputs(
         generic_params, ecg,
-        left_ventrical, left_atrium, right_ventrical, right_atrium,
+        left_ventricle, left_atrium, right_ventricle, right_atrium,
         systemic, pulmonary,
         aortic_valve, mitral_valve, pulmonary_valve, tricuspid_valve,
         thermal_system,
@@ -352,11 +352,11 @@ def solve_system(
     r_scale = inputs["generic_params"]["r_scale"]
     c_scale = inputs["generic_params"]["c_scale"]
 
-    # Left ventrical
-    lv_emin = ct.c_double(inputs["left_ventrical"]["emin"] * e_scale)
-    lv_emax = ct.c_double(inputs["left_ventrical"]["emax"] * e_scale)
-    lv_v01 = ct.c_double(inputs["left_ventrical"]["vmin"] * v_scale)
-    lv_v02 = ct.c_double(inputs["left_ventrical"]["vmax"] * v_scale)
+    # Left ventricle
+    lv_emin = ct.c_double(inputs["left_ventricle"]["emin"] * e_scale)
+    lv_emax = ct.c_double(inputs["left_ventricle"]["emax"] * e_scale)
+    lv_v01 = ct.c_double(inputs["left_ventricle"]["vmin"] * v_scale)
+    lv_v02 = ct.c_double(inputs["left_ventricle"]["vmax"] * v_scale)
 
     # Left atrium
     la_emin = ct.c_double(inputs["left_atrium"]["emin"] * e_scale)
@@ -364,11 +364,11 @@ def solve_system(
     la_v01 = ct.c_double(inputs["left_atrium"]["vmin"] * v_scale)
     la_v02 = ct.c_double(inputs["left_atrium"]["vmax"] * v_scale)
 
-    # Right ventrical
-    rv_emin = ct.c_double(inputs["right_ventrical"]["emin"] * e_scale)
-    rv_emax = ct.c_double(inputs["right_ventrical"]["emax"] * e_scale)
-    rv_v01 = ct.c_double(inputs["right_ventrical"]["vmin"] * v_scale)
-    rv_v02 = ct.c_double(inputs["right_ventrical"]["vmax"] * v_scale)
+    # Right ventricle
+    rv_emin = ct.c_double(inputs["right_ventricle"]["emin"] * e_scale)
+    rv_emax = ct.c_double(inputs["right_ventricle"]["emax"] * e_scale)
+    rv_v01 = ct.c_double(inputs["right_ventricle"]["vmin"] * v_scale)
+    rv_v02 = ct.c_double(inputs["right_ventricle"]["vmax"] * v_scale)
 
     # Right atrium
     ra_emin = ct.c_double(inputs["right_atrium"]["emin"] * e_scale)

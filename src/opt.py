@@ -78,7 +78,7 @@ def load_default_params() -> dict:
 
     ecg = {}
 
-    left_ventrical = {
+    left_ventricle = {
         "emin": [0.05, 0.15, 0.1],
         "emax": [0.25, 0.75, 0.5],
         "vmin": [5, 15, 10],
@@ -92,7 +92,7 @@ def load_default_params() -> dict:
         "vmax": [13, 41, 27],
     }
 
-    right_ventrical = {
+    right_ventricle = {
         "emin": [0.05, 0.15, 0.1],
         "emax": [0.46, 1.38, 0.92],
         "vmin": [27, 83, 55],
@@ -149,9 +149,9 @@ def load_default_params() -> dict:
     defaults = {
         "generic_params": generic_params,
         "ecg": ecg,
-        "left_ventrical": left_ventrical,
+        "left_ventricle": left_ventricle,
         "left_atrium": left_atrium,
-        "right_ventrical": right_ventrical,
+        "right_ventricle": right_ventricle,
         "right_atrium": right_atrium,
         "systemic": systemic,
         "pulmonary": pulmonary,

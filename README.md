@@ -107,7 +107,7 @@ parameter dictionary.
 ```python
 sol = solve_system(
     generic_params={'period': 1}, # Cardiac period of 1s (60bpm)
-    left_ventrical={'vmin': 20, 'vmax': 150} # Sets the minimum and maximum volume
+    left_ventricle={'vmin': 20, 'vmax': 150} # Sets the minimum and maximum volume
     thermal_system={'k_dil': 0, 'k_con': 0}, # Disables thermoregulation
     )
 ```
@@ -148,7 +148,7 @@ sol_2 = solve_system(
         'weight': 80,   # Weight (kg)
         'age': 32,      # Age (years)
         'sex': 1,       # Sex (1 for female, 0 for male)
-    left_ventrical={'vmin': 20, 'vmax': 150} # Sets the minimum and maximum volume
+    left_ventricle={'vmin': 20, 'vmax': 150} # Sets the minimum and maximum volume
     }
     )
 
@@ -314,9 +314,9 @@ These are:
 
 - `"generic_params"`
 - `"ecg"`
-- `"left_ventrical"`
+- `"left_ventricle"`
 - `"left_atrium"`
-- `"right_ventrical"`
+- `"right_ventricle"`
 - `"right_atrium"`
 - `"systemic"`
 - `"pulmonary"`
@@ -353,7 +353,7 @@ The default values are as follows:
         "t4": 0.522,    # Time of end of T wave.
     }
 
-    left_ventrical = {
+    left_ventricle = {
         "emin": 0.1,    # Minimum elastance.
         "emax": 0.5,    # Maximum elastance.
         "vmin": 10,     # Minimum volume.
@@ -367,7 +367,7 @@ The default values are as follows:
         "vmax": 27,
     }
 
-    right_ventrical = {
+    right_ventricle = {
         "emin": 0.1,
         "emax": 0.92,
         "vmin": 55,

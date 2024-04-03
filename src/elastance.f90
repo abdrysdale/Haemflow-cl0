@@ -28,11 +28,11 @@ contains
       end if
     end function atria_act
 
-    ! Ventrical elastance activation functions taken from:
+    ! Ventricle elastance activation functions taken from:
     ! D. C. Chung, S. C. Niranjan, J. W. Clark, A. Bidani, W. E. Johnston, J. B. Zwischenberger, and D. L. Traber, 
     ! “A dynamic model of ventricular interaction and pericardial influence,”
     ! Amer. J. Physiol. Heart Circ. Physiol., vol. 272, no. 6, pp. H2942–H2962, Jun. 1, 1997.
-    elemental function ventrical_act(t, T2, T3, T4) result(u_v)
+    elemental function ventricle_act(t, T2, T3, T4) result(u_v)
       real(dp), intent(in) :: t
       real(dp), intent(in) :: T2
       real(dp), intent(in) :: T3
@@ -48,7 +48,7 @@ contains
          u_v = 0
       end if
 
-    end function ventrical_act
+    end function ventricle_act
 
     ! Calculates the elastance of the heart
     elemental function calc_elastance(cham, t, T1, T2, T3, T4, is_atria) result(E_out)
@@ -68,7 +68,7 @@ contains
         if (is_atria) then
            E_out = cham%Emin + (cham%Emax - cham%Emin) * atria_act(t, T1, T2)
         else
-           E_out = cham%Emin + (cham%Emax - cham%Emin) * ventrical_act(t, T2, T3, T4)
+           E_out = cham%Emin + (cham%Emax - cham%Emin) * ventricle_act(t, T2, T3, T4)
         end if
     end function calc_elastance
 
