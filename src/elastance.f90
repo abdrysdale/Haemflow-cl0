@@ -139,21 +139,21 @@ contains
 
       if ( height_in <= 0.0_dp) then
          print *,"Height cannot be less than 0, setting to 160cm"
-         height = 160_dp
+         height = 160.0_dp
       else
          height = height_in
       end if
 
       if ( weight_in <= 0.0_dp) then
          print *,"Weight cannot be less than 0, setting to 80kg"
-         weight = 80_dp
+         weight = 80.0_dp
       else
          weight = weight_in
       end if
 
-      if ( age_in <= 18 ) then
+      if ( age_in <= 18.0_dp ) then
          print *,"This calculation is not supported for children, setting to 18 years old"
-         age = 18_dp
+         age = 18.0_dp
       else
          age = age_in
       end if
