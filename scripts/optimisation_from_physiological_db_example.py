@@ -4,12 +4,14 @@
 # Python imports
 import sys
 import logging
+import argparse
+import multiprocessing as mp
+import sqlite3
 
 # Module imports
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import sqlite3
 
 # Local imports
 from src import solve_system, Optimiser
@@ -17,10 +19,21 @@ from src import solve_system, Optimiser
 logger = logging.getLogger(__file__)
 
 
-def main():
+def main(num_workers=None, node=None, max_node=None):
     """Main script for optimisation against csv records. """
 
-    db_path = "../ADAN56_SPD_analysis/physiological.db"
+    # Sets up the parallel optimisation
+    num_cores = mp.cpu_count() - 1
+    num_workers = min(
+        num_cores,
+        num_workers if num_workers is not None else num_cores
+    )
+
+    node = node if node is not None else 1
+    max_node = max_node if max_node is not None else 1
+
+    # Loads the data
+    db_path = "physiological.db"
     con = sqlite3.connect(db_path)
     cursor = con.cursor()
     col_names = (
@@ -29,7 +42,20 @@ def main():
     table = 'literature_relations'
     out_table_name = 'lumped_model_outputs'
 
-    cursor.execute(f"SELECT {', '.join(col_names)} FROM {table}")
+    if max_node > 1:
+        cursor.execute(f"SELECT COALESCE(MAX(row_names)+1, 0) FROM {table}")
+        num_rows = cursor.fetchone()[0]
+        min_row = int(node / max_node * num_rows)
+        max_row = int((node + 1) / max_node * num_rows)
+
+        cursor.execute(
+            f"SELECT {', '.join(col_names)} FROM {table} "
+            f"WHERE row_names >= {min_row} AND row_names < {max_row}"
+        )
+
+    else:
+        cursor.execute(f"SELECT {', '.join(col_names)} FROM {table}")
+
     df = pd.DataFrame(cursor.fetchall(), columns=col_names)
 
     for i in tqdm(range(df.shape[0]), position=0, file=sys.stdout, leave=True):
@@ -76,7 +102,7 @@ def main():
             inputs=inputs,
             params=params,
             budget=1000,
-            num_workers=16,
+            num_workers=num_workers,
             multi_objective=True,
             tol=1e-3,
             pbar=False,
@@ -124,4 +150,28 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(
+        description='Optimises against a physiological database'
+    )
+
+    parser.add_argument(
+        '--num_workers',
+        type=int,
+        help='Number of workers for the multi-objective optimisation',
+    )
+
+    parser.add_argument(
+        '--node',
+        type=int,
+        help='Current node index (for HPC optimisation).',
+    )
+
+    parser.add_argument(
+        '--max_node',
+        type=int,
+        help='Maximum node index (for HPC optimisation).',
+    )
+
+    args = parser.parse_args()
+
+    main(num_workers=args.num_workers, node=args.node, max_node=args.max_node)
