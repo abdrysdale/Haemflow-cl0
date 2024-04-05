@@ -12,16 +12,13 @@
 #SBATCH --cpus-per-task=40
 # Account name
 #SBATCH --account=scw1706
-#SBATCH --array=0-24
 # Email alerts
 #SBATCH --mail-user=2026353@swansea.ac.uk
 #SBATCH --mail-type=ALL
-
-no=({0..24})
 
 module load singularity/3.8.5
 
 srun singularity run --bind "$(pwd)":/app cl0.sif \ 
 ./scripts/optimisation_from_physiological_db_example.py \
---node "${no[$SLURM_ARRAY_TASK_ID]}" \
---max_node 25
+--node $1
+--max_node $2
