@@ -1,7 +1,9 @@
 #! /bin/bash
 set -x
 
-for i in {0..24} do
-         sbatch scripts/physiological_opti_sbatch.sh i 24
+max_nodes=24
+
+for i in {0..${max_nodes}} do
+         sbatch scripts/physiological_opti_sbatch.sh ${i} ${max_nodes}
          sleep 30
 done
