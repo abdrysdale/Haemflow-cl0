@@ -114,6 +114,7 @@ def main(num_workers=None, node=None, max_node=None, replace_table=False):
         # Saves the results #
         #####################
 
+        frames = []
         for j, best_p in enumerate(best_params):
             sol = solve_system(**best_p)
 
@@ -135,16 +136,26 @@ def main(num_workers=None, node=None, max_node=None, replace_table=False):
                 **opt.flat_inputs_raw,
                 **opt.recommendation[j],
             }
+            frames.append(pd.DataFrame([outputs]))
 
-            if i == 0 and j == 0 and replace_table:
-                pd.DataFrame([outputs]).to_sql(
-                    out_table_name, con, if_exists='replace', index=False,
-                )
 
-            else:
-                pd.DataFrame([outputs]).to_sql(
-                    out_table_name, con, if_exists='append', index=False,
+        if replace_table:
+            if_exists = 'replace'
+        else:
+            if_exists = 'append'
+        
+        best_df = pd.concat(frames, ignore_index=True, sort=False)
+        db_write_sucessful = False
+
+        while not db_write_sucessful:
+            try:
+                best_df.to_sql(
+                    out_table_name, con, if_exists=if_exists, index=False,
                 )
+            except sqlite3.OperationalError:
+                pass
+
+
 
         tqdm._instances.clear()
 
