@@ -19,7 +19,7 @@ from src import solve_system, Optimiser
 logger = logging.getLogger(__file__)
 
 
-def main(num_workers=None, node=None, max_node=None):
+def main(num_workers=None, node=None, max_node=None, replace_table=False):
     """Main script for optimisation against csv records. """
 
     # Sets up the parallel optimisation
@@ -136,7 +136,7 @@ def main(num_workers=None, node=None, max_node=None):
                 **opt.recommendation[j],
             }
 
-            if i == 0 and j == 0:
+            if i == 0 and j == 0 and replace_table:
                 pd.DataFrame([outputs]).to_sql(
                     out_table_name, con, if_exists='replace', index=False,
                 )
@@ -171,7 +171,16 @@ if __name__ == '__main__':
         type=int,
         help='Maximum node index (for HPC optimisation).',
     )
+    parser.add_argument(
+        "--replace_table",
+        help="Replaces the existing SQLite3 table.",
+        action="store_true")
 
     args = parser.parse_args()
 
-    main(num_workers=args.num_workers, node=args.node, max_node=args.max_node)
+    main(
+        num_workers=args.num_workers,
+        node=args.node,
+        max_node=args.max_node,
+        replace_table=args.replace_table,
+    )
