@@ -19,6 +19,42 @@ from src import solve_system, Optimiser
 logger = logging.getLogger(__file__)
 
 
+def execute_sql_concurrently(db_path, query, fetchone=False, max_tries=0, timeout=10):
+    """Executes an SQL command concurrently 
+
+    Args:
+        db_path (str) : Path to SQLite3 database.
+        query (str) : Query to execute.
+    """
+
+    db_opt_sucessful = False
+    tries = -1
+    
+    while not db_opt_sucessful:
+        if max_tries > 0:
+            tries += 1
+        try:
+            con = sqlite3.connect(db_path, timeout=timeout)
+            cursor = con.cursor()
+            cursos.execute(query)
+
+            if fetchone:
+                result = cursor.fetchone()[0]
+            else:
+                result = cursor.fetchall()
+
+            con.close()
+            db_opt_sucessful = True
+            
+        except sqlite3.OperationalError:
+            if tries >= max_tries:
+                logger.critical(f"Maximum SQLite3 tries exceed ({tries}/{max_tries}).")
+                raise
+
+    return result
+
+
+
 def main(num_workers=None, node=None, max_node=None, replace_table=False):
     """Main script for optimisation against csv records. """
 
@@ -34,8 +70,6 @@ def main(num_workers=None, node=None, max_node=None, replace_table=False):
 
     # Loads the data
     db_path = "physiological.db"
-    con = sqlite3.connect(db_path)
-    cursor = con.cursor()
     col_names = (
         "row_names", "hr", "sex", "age", "sbp", "dbp", "height", "weight"
     )
@@ -43,20 +77,22 @@ def main(num_workers=None, node=None, max_node=None, replace_table=False):
     out_table_name = 'lumped_model_outputs'
 
     if max_node > 1:
-        cursor.execute(f"SELECT COALESCE(MAX(row_names)+1, 0) FROM {table}")
-        num_rows = cursor.fetchone()[0]
+        query = f"SELECT COALESCE(MAX(row_names)+1, 0) FROM {table}"
+        num_rows = execute_sql_concurrently(db_path, query, fetchone=True)
         min_row = int(node / max_node * num_rows)
         max_row = int((node + 1) / max_node * num_rows)
 
-        cursor.execute(
+        query = (
             f"SELECT {', '.join(col_names)} FROM {table} "
             f"WHERE row_names >= {min_row} AND row_names < {max_row}"
         )
+        data = execute_sql_concurrently(db_path, query)
 
     else:
-        cursor.execute(f"SELECT {', '.join(col_names)} FROM {table}")
+        query = f"SELECT {', '.join(col_names)} FROM {table}"
+        data = execute_sql_concurrently(db_path, query)
 
-    df = pd.DataFrame(cursor.fetchall(), columns=col_names)
+    df = pd.DataFrame(data, columns=col_names)
 
     for i in tqdm(range(df.shape[0]), position=0, file=sys.stdout, leave=True):
 
@@ -145,16 +181,19 @@ def main(num_workers=None, node=None, max_node=None, replace_table=False):
             if_exists = 'append'
         
         best_df = pd.concat(frames, ignore_index=True, sort=False)
-        db_write_sucessful = False
 
+        
+        db_write_sucessful = False
         while not db_write_sucessful:
             try:
+                con = sqlite3.connect(db_path, timeout=10)
                 best_df.to_sql(
                     out_table_name, con, if_exists=if_exists, index=False,
                 )
-            except sqlite3.OperationalError:
+                db_write_sucessful = True
+                con.close()
+            except sqlite3.OperationalError or pd.errors.DatabaseError:
                 pass
-
 
 
         tqdm._instances.clear()
