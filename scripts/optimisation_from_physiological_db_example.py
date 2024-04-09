@@ -36,7 +36,7 @@ def execute_sql_concurrently(db_path, query, fetchone=False, max_tries=0, timeou
         try:
             con = sqlite3.connect(db_path, timeout=timeout)
             cursor = con.cursor()
-            cursos.execute(query)
+            cursor.execute(query)
 
             if fetchone:
                 result = cursor.fetchone()[0]
@@ -55,18 +55,18 @@ def execute_sql_concurrently(db_path, query, fetchone=False, max_tries=0, timeou
 
 
 
-def main(num_workers=None, node=None, max_node=None, replace_table=False):
-    """Main script for optimisation against csv records. """
+def main(num_workers=None, start=None, total=None, replace_table=False):
+    """Main script for optimisation against db records. """
 
     # Sets up the parallel optimisation
-    num_cores = mp.cpu_count() - 1
+    num_cores = mp.cpu_count()
     num_workers = min(
         num_cores,
         num_workers if num_workers is not None else num_cores
     )
 
-    node = node if node is not None else 1
-    max_node = max_node if max_node is not None else 1
+    start = start if start is not None else 0
+    total = total if total is not None else 1
 
     # Loads the data
     db_path = "physiological.db"
@@ -76,15 +76,16 @@ def main(num_workers=None, node=None, max_node=None, replace_table=False):
     table = 'literature_relations'
     out_table_name = 'lumped_model_outputs'
 
-    if max_node > 1:
+    if total > 1:
         query = f"SELECT COALESCE(MAX(row_names)+1, 0) FROM {table}"
         num_rows = execute_sql_concurrently(db_path, query, fetchone=True)
-        min_row = int(node / max_node * num_rows)
-        max_row = int((node + 1) / max_node * num_rows)
+        
+        min_row = int(start / total * num_rows)
+        max_row = int((start + num_workers) / total * num_rows)
 
         query = (
             f"SELECT {', '.join(col_names)} FROM {table} "
-            f"WHERE row_names >= {min_row} AND row_names < {max_row}"
+            f"WHERE row_names >= {min_row} AND row_names =< {max_row}"
         )
         data = execute_sql_concurrently(db_path, query)
 
@@ -211,15 +212,15 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--node',
+        '--start',
         type=int,
-        help='Current node index (for HPC optimisation).',
+        help='Starting cpu index (for HPC optimisation).',
     )
 
     parser.add_argument(
-        '--max_node',
+        '--total',
         type=int,
-        help='Maximum node index (for HPC optimisation).',
+        help='Total number of cpus for the job (for HPC optimisation).',
     )
     parser.add_argument(
         "--replace_table",
@@ -229,8 +230,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     main(
+        start=args.start,
+        total=args.total,
         num_workers=args.num_workers,
-        node=args.node,
-        max_node=args.max_node,
         replace_table=args.replace_table,
     )

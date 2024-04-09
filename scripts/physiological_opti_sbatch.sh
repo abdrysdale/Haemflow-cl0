@@ -24,9 +24,9 @@
 
 module load singularity/3.8.5
 
-# NODE and MAX_NODE are environment variables
+# START, NUM and TOTAL are environment variables
 # as sbatch scripts don't allow for command line arguments.
 
 srun singularity exec --bind "$(pwd)":/app cl0.sif \
 python3 scripts/optimisation_from_physiological_db_example.py \
---node ${NODE} --max_node ${MAX_NODE}
+--start ${START} --total ${TOTAL} --num_workers ${NUM} 
