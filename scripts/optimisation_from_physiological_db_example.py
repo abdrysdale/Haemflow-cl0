@@ -204,7 +204,6 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
                 con.close()
             except sqlite3.OperationalError or pd.errors.DatabaseError:
                 logger.warning(traceback.print_exc())
-                pass
 
         tqdm._instances.clear()
 
