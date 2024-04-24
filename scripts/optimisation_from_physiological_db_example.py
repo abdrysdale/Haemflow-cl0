@@ -25,6 +25,15 @@ def execute_sql_concurrently(db_path, query, fetchone=False, max_tries=0, timeou
     Args:
         db_path (str) : Path to SQLite3 database.
         query (str) : Query to execute.
+        fetchone (bool, optional) : If True, will return only the first result.
+                Defaults to False.
+        max_tries (int, optional) : Maximum number of retries for SQL connection.
+                If 0, will perpetually retry. Defaults to 0.
+        timeout (int, optional) : Timeout for SQLite connection.
+
+
+    Returns:
+        result (list) : Result from the SQL query.
     """
 
     db_opt_sucessful = False
@@ -128,9 +137,9 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
 
         params = {
             "generic_params": {
-                "r_scale": [0.1, 10, 1],
-                "c_scale": [0.1, 10, 1],
-                'e_scale': [0.9, 1.1, 1],
+                "r_scale": [0.1, 10, 1.5],
+                "c_scale": [0.1, 10, 0.5],
+                'e_scale': [0.25, 4, 2.0],
             },
         }
 
