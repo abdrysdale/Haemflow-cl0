@@ -29,4 +29,4 @@ module load singularity/3.8.5
 
 srun singularity exec --bind "$(pwd)":/app cl0.sif \
 python3 scripts/optimisation_from_physiological_db_example.py \
---start ${START} --total ${TOTAL} --num_workers ${NUM} 
+--start ${START} --total ${TOTAL} --num_workers ${NUM} --log WARNING

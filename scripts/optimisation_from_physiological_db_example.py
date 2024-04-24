@@ -39,10 +39,12 @@ def execute_sql_concurrently(db_path, query, fetchone=False, max_tries=0, timeou
 
     db_opt_sucessful = False
     tries = -1
+
+    logger.debug(f"Attempting to connect to {db_path} and run {query}")
     
     while not db_opt_sucessful:
-        if max_tries > 0:
-            tries += 1
+        tries += 1
+        logger.debug(f"Try {tries} to connect to {db_path} ...")
         try:
             con = sqlite3.connect(db_path, timeout=timeout)
             cursor = con.cursor()
@@ -57,7 +59,8 @@ def execute_sql_concurrently(db_path, query, fetchone=False, max_tries=0, timeou
             db_opt_sucessful = True
             
         except sqlite3.OperationalError:
-            if tries >= max_tries:
+            logger.debug(traceback.print_exc())
+            if tries >= max_tries and max_tries > 0:
                 logger.critical(f"Maximum SQLite3 tries exceed ({tries}/{max_tries}).")
                 raise
 
@@ -65,18 +68,22 @@ def execute_sql_concurrently(db_path, query, fetchone=False, max_tries=0, timeou
 
 
 
-def main(num_workers=None, start=None, total=None, replace_table=False):
+def main(num_workers=None, start=None, total=None, replace_table=False, budget=1000):
     """Main script for optimisation against db records. """
 
     # Sets up the parallel optimisation
     num_cores = mp.cpu_count()
     num_workers = min(
         num_cores,
-        num_workers if num_workers is not None else num_cores
+        num_workers if num_workers is not None else num_coresr
     )
 
     start = start if start is not None else 0
     total = total if total is not None else 1
+
+    logger.debug(
+        f"Starting job {start} out of {total} with {num_workers} workers."
+    )
 
     # Loads the data
     db_path = "physiological.db"
@@ -95,7 +102,7 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
 
         query = (
             f"SELECT {', '.join(col_names)} FROM {table} "
-            f"WHERE row_names >= {min_row} AND row_names =< {max_row}"
+            f"WHERE row_names >= {min_row} AND row_names <= {max_row}"
         )
         data = execute_sql_concurrently(db_path, query)
 
@@ -104,6 +111,8 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
         data = execute_sql_concurrently(db_path, query)
 
     df = pd.DataFrame(data, columns=col_names)
+
+    logger.debug(f"Sucessfully loaded database {db_path} with shape {df.shape}")
 
     for i in tqdm(range(df.shape[0]), position=0, file=sys.stdout, leave=True):
 
@@ -144,11 +153,16 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
             },
         }
 
+        logger.debug(
+            f"Beginning optimisation of patient {i} with variable parameters:\n"
+            f"{params}\n and fixed inputs:\n{inputs}"
+        )
+
         opt = Optimiser(
             optimiser="TwoPointsDE",
             inputs=inputs,
             params=params,
-            budget=1000,
+            budget=budget,
             num_workers=num_workers,
             multi_objective=True,
             tol=1e-3,
@@ -156,6 +170,8 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
         )
 
         best_params = opt.run(sbp=row['sbp'], dbp=row['dbp'])
+
+        logger.debug(f"Optimisation for patient {i} has been completed.")
 
         #####################
         # Saves the results #
@@ -194,6 +210,7 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
         best_df = pd.concat(frames, ignore_index=True, sort=False)
 
         db_write_sucessful = False
+        logger.debug("Attempting to write Pareto Frontier to database ...")
         while not db_write_sucessful:
             try:
                 con = sqlite3.connect(db_path, timeout=10)
@@ -203,7 +220,8 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
                 db_write_sucessful = True
                 con.close()
             except sqlite3.OperationalError or pd.errors.DatabaseError:
-                logger.warning(traceback.print_exc())
+                logger.debug(traceback.print_exc())
+        logger.debug(f"Pareto Front for patient {i} has been written to the database!")
 
         tqdm._instances.clear()
 
@@ -233,9 +251,21 @@ if __name__ == '__main__':
     parser.add_argument(
         "--replace_table",
         help="Replaces the existing SQLite3 table.",
-        action="store_true")
+        action="store_true"
+    )
+    parser.add_argument(
+        "--log",
+        type=str,
+        default='warning',
+        help="Sets the logging level.",
+    )
 
     args = parser.parse_args()
+
+    log_level = getattr(logging, args.log.upper())
+    if not isinstance(log_level, int):
+        raise ValueError(f"Invalid log level: {args.log}")
+    logging.basicConfig(level=log_level)
 
     main(
         start=args.start,
