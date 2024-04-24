@@ -6,6 +6,7 @@ import sys
 import logging
 import argparse
 import multiprocessing as mp
+import traceback
 import sqlite3
 
 # Module imports
@@ -189,10 +190,9 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
             if_exists = 'replace'
         else:
             if_exists = 'append'
-        
+
         best_df = pd.concat(frames, ignore_index=True, sort=False)
 
-        
         db_write_sucessful = False
         while not db_write_sucessful:
             try:
@@ -203,8 +203,8 @@ def main(num_workers=None, start=None, total=None, replace_table=False):
                 db_write_sucessful = True
                 con.close()
             except sqlite3.OperationalError or pd.errors.DatabaseError:
+                logger.warning(traceback.print_exc())
                 pass
-
 
         tqdm._instances.clear()
 
