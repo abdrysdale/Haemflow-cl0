@@ -1,5 +1,7 @@
 #! /usr/bin/env perl
 
+use v5.10;
+
 use strict;
 use warnings;
 
@@ -12,6 +14,7 @@ my $max_node = 300;
 my $delay = 3;
 my $cpus_per_task = 30;
 my $script_path = 'scripts/physiological_opti_sbatch.sh';
+my $add_to_queue = 0;
 my $debug = 0;
 
 GetOptions ('max=i' => \$max_node,
@@ -20,6 +23,7 @@ GetOptions ('max=i' => \$max_node,
             'delay=i' => \$delay,
             'script=s' => \$script_path,
             'cpus=i' => \$cpus_per_task,
+            'queue' => \$add_to_queue,
             'debug' => \$debug);
 
 my $cmd = 'sbatch';
@@ -40,7 +44,7 @@ my @partitions = ('compute', 's_gpu_eng', 'accel_ai');
 my %part_accounts = (compute => 'scw1706', s_gpu_eng => 'scw1901', accel_ai => 'scw1901');
 my @fields = ('NodeName', 'CPUAlloc', 'CPUEfctv', 'State', 'Partitions');
 my @up_states = ('ALLOC', 'MIXED', 'IDLE');
-my %max_jobs = (compute => 30, accel_ai => 15, s_gpu_eng => 1);
+my %max_jobs = (compute => 25, accel_ai => 15, s_gpu_eng => 1);
 my %remain_jobs;
 my $accel_ai_max_cpus = 16;
 my $default_compute_cpus = 30;
@@ -143,22 +147,19 @@ for my $i ( 0 .. $#up_nodes ) {
 my @sorted_jobs = sort {$b->{free} <=> $a->{free}} @job_plan;
 
 # Filters the sorted jobs to ensure the job limit is not exceeded
-my @del_indexes;
+my @filtered_jobs;
 for my $i ( 0 .. $#sorted_jobs) {
 
   my %job = $sorted_jobs[$i]->%*;
 
   if ($remain_jobs{$job{part}} > 0) {
     $remain_jobs{$job{part}} -= 1;
-  } else {
-    push @del_indexes, $i;
+    push @filtered_jobs, $sorted_jobs[$i];
   }
 }
-splice(@sorted_jobs, @del_indexes, 1);
 
 my $requested_cpus = $cpus_per_task * $num_node;
-
-if ($ttl_cpus < $requested_cpus) {
+if ($ttl_cpus < $requested_cpus and $add_to_queue) {
   print "Requested CPUs ($requested_cpus) exceeds all available CPUs ($ttl_cpus).\n";
   print "Adding remaining jobs to the queue.\n";
 
@@ -170,19 +171,20 @@ if ($ttl_cpus < $requested_cpus) {
     $job->{'free'} = $plan_cpus;
     $job->{'part'} = 'compute';
     $job->{'account'} = $part_accounts{compute};
-    push @sorted_jobs, $job;
+    push @filtered_jobs, $job;
 
     $cpus_remaining -= $plan_cpus;
   }
+  @filtered_jobs = sort {$b->{free} <=> $a->{free}} @filtered_jobs;
 }
 
 # Proportionally splits the jobs according to number of CPUS
 my $ttl_job_cpus = $cpus_per_task * $max_node;
 my @start_idx;
 my $prev_idx = $init_node * $cpus_per_task;
-for my $i ( 0 .. $#sorted_jobs ) {
+for my $i ( 0 .. $#filtered_jobs ) {
 
-  my %job = $sorted_jobs[$i]->%*;
+  my %job = $filtered_jobs[$i]->%*;
 
   $start_idx[$i] = $prev_idx;
 
@@ -194,13 +196,14 @@ for my $i ( 0 .. $#sorted_jobs ) {
 # Sends the jobs #
 ##################
 
-print "Sending $#sorted_jobs jobs with a ${delay}s delay.\n";
+my $total_jobs = $#filtered_jobs + 1;
+print "Sending $total_jobs jobs with a ${delay}s delay.\n";
 print "Script:\t${script_path}\n\n";
 
-for my $i ( 0 .. $#sorted_jobs ) {
+for my $i ( 0 .. $#filtered_jobs ) {
   my $job_num = $i + 1;
-  my %job = $sorted_jobs[$i]->%*;
-  print "Sending job $job_num/$#sorted_jobs with $job{free} CPUs on $job{part} ::\t";
+  my %job = $filtered_jobs[$i]->%*;
+  print "Sending job $job_num/$total_jobs with $job{free} CPUs on $job{part} ::\t";
 
   system($cmd, 
          "--export=ALL,START=$start_idx[$i],NUM=$job{free},TOTAL=$ttl_job_cpus",
@@ -213,7 +216,7 @@ for my $i ( 0 .. $#sorted_jobs ) {
          "--gres=gpu:0",
          $script_path);
 
-  if ($job_num < $#sorted_jobs) {
+  if ($job_num < $#filtered_jobs) {
     sleep $delay;
   }
 }
