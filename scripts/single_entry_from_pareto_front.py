@@ -7,6 +7,9 @@ import string
 import argparse
 from typing import Optional
 import logging
+import multiprocessing as mp
+from math import ceil
+import itertools
 
 # Module imports
 from tqdm import tqdm
@@ -71,7 +74,73 @@ def loss(a, b):
     return abs(a - b) / b
 
 
-def main():
+def single_from_pareto(row, db_info):
+
+    new_table = db_info['new_table']
+    db_path = db_info['db_path']
+    table = db_info['table']
+    id_col = db_info['id_col']
+    opt_cols = db_info['opt_cols']
+    static_cols = db_info['static_cols']
+    var_col = db_info['var_col']
+    all_cols = db_info['all_cols']
+    all_cols_str = db_info['all_cols_str']
+
+    query = f"SELECT {all_cols_str} FROM {table} WHERE {id_col} == {row}"
+    data = pd.DataFrame(
+        execute_sql_concurrently(db_path, query, max_tries=10),
+        columns=all_cols,
+    ).dropna()
+    for i, col in enumerate(opt_cols.keys()):
+        if i == 0:
+            _loss = loss(data[opt_cols[col]], data[col])
+        else:
+            _loss = _loss + loss(data[opt_cols[col]], data[col])
+    data["w"] = (1 / _loss) / sum(1 / _loss)
+
+    single_row = {col: data[col].iloc[0] for col in static_cols}
+    single_row[var_col] = sum(data[var_col] * data["w"])
+    for col in opt_cols.keys():
+        single_row[opt_cols[col]] = data[opt_cols[col]].iloc[0]
+        single_row[col] = sum(data[col] * data["w"])
+    single_row[id_col] = row
+
+    con = sqlite3.connect(db_path, timeout=10)
+    pd.DataFrame(
+        single_row,
+        index=[0],
+    ).to_sql(new_table, con, if_exists='append')
+    con.close()
+
+    return True
+
+
+def single_from_pareto_loop(args):
+    rows, db_info = args
+    logger.debug(f"Starting pareto front reduction on {len(rows)} rows ...")
+    for row in rows:
+        single_from_pareto(row, db_info)
+    return True
+
+
+def main(num_workers=None, start=None, total=None):
+
+    ##################################
+    # Sets up the parallel execution #
+    ##################################
+
+    num_cores = mp.cpu_count()
+    num_workers = min(
+        num_cores,
+        num_workers if num_workers is not None else num_cores,
+    )
+
+    start = start if start is not None else 0
+    total = total if total is not None else 1
+
+    logger.debug(
+        f"Starting job {start} out of {total} with {num_workers} workers."
+    )
 
     db_path = "physiological.sqlite3"
     table = "lumped_model_outputs"
@@ -103,7 +172,14 @@ def main():
     )
 
     query = f"SELECT DISTINCT({id_col}) FROM {table}"
-    rows = [r[0] for r in execute_sql_concurrently(db_path, query)]
+    row_tuple = execute_sql_concurrently(db_path, query)
+
+    if total > 1:
+        min_idx = int(start / total * len(row_tuple))
+        max_idx = int((start + num_workers) / total * len(row_tuple))
+        row_tuple = row_tuple[min_idx:max_idx]
+
+    rows = [r[0] for r in row_tuple]
 
     logger.info(
         f"Connecting to {db_path} "
@@ -112,33 +188,39 @@ def main():
         f"The following columns are used for optimisation:\n{opt_cols}\n"
         f"The following column is the variable column of interest: {var_col}\n"
     )
-    for row in tqdm(rows):
 
-        query = f"SELECT {all_cols_str} FROM {table} WHERE {id_col} == {row}"
-        data = pd.DataFrame(
-            execute_sql_concurrently(db_path, query, max_tries=10),
-            columns=all_cols,
-        ).dropna()
-        for i, col in enumerate(opt_cols.keys()):
-            if i == 0:
-                _loss = loss(data[opt_cols[col]], data[col])
-            else:
-                _loss = _loss + loss(data[opt_cols[col]], data[col])
-        data["w"] = (1 / _loss) / sum(1 / _loss)
+    db_info = {
+        'new_table': new_table,
+        'db_path': db_path,
+        'table': table,
+        'id_col': id_col,
+        'opt_cols': opt_cols,
+        'static_cols': static_cols,
+        'var_col': var_col,
+        'all_cols': all_cols,
+        'all_cols_str': all_cols_str,
+    }
 
-        single_row = {col: data[col].iloc[0] for col in static_cols}
-        single_row[var_col] = sum(data[var_col] * data["w"])
-        for col in opt_cols.keys():
-            single_row[opt_cols[col]] = data[opt_cols[col]].iloc[0]
-            single_row[col] = sum(data[col] * data["w"])
-        single_row[id_col] = row
+    # Single core #
+    if num_workers <= 1:
+        for row in tqdm(rows):
+            single_from_pareto(row, db_info)
 
-        con = sqlite3.connect(db_path, timeout=10)
-        pd.DataFrame(
-            single_row,
-            index=[0],
-        ).to_sql(new_table, con, if_exists='append')
-        con.close()
+    # Parallel #
+    else:
+        n = ceil(len(rows) / num_workers)
+        args = list(
+            zip(
+                [rows[i:i+n] for i in range(0, len(rows), n)],
+                itertools.repeat(db_info),
+            )
+        )
+        logger.debug(f"Zipped args format:\n{args[0]}")
+
+        with mp.Pool(num_workers) as p:
+            p.map(single_from_pareto_loop, args)
+
+    logger.info(f"Completed! Processed {len(rows)} rows.")
 
 
 if __name__ == "__main__":
@@ -148,6 +230,24 @@ if __name__ == "__main__":
             "Transforms a Pareto Frontier into a "
             "single value via loss weighting."
         )
+    )
+
+    parser.add_argument(
+        '--num_workers',
+        type=int,
+        help='Number of workers',
+    )
+
+    parser.add_argument(
+        '--start',
+        type=int,
+        help='Starting cpu index (for HPC optimisation).',
+    )
+
+    parser.add_argument(
+        '--total',
+        type=int,
+        help='Total number of cpus for the job (for HPC optimisation).',
     )
 
     parser.add_argument(
@@ -161,4 +261,8 @@ if __name__ == "__main__":
     log_level = getattr(logging, args.log.upper())
     logging.basicConfig(level=log_level)
 
-    main()
+    main(
+        start=args.start,
+        total=args.total,
+        num_workers=args.num_workers,
+    )
