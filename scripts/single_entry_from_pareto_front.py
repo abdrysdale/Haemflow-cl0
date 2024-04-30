@@ -126,10 +126,10 @@ def main():
                 _loss = _loss + loss(data[opt_cols[col]], data[col])
         data["w"] = (1 / _loss) / sum(1 / _loss)
 
-        single_row = {col: data[col][0] for col in static_cols}
+        single_row = {col: data[col].iloc[0] for col in static_cols}
         single_row[var_col] = sum(data[var_col] * data["w"])
         for col in opt_cols.keys():
-            single_row[opt_cols[col]] = data[opt_cols[col]][0]
+            single_row[opt_cols[col]] = data[opt_cols[col]].iloc[0]
             single_row[col] = sum(data[col] * data["w"])
         single_row[id_col] = row
 
