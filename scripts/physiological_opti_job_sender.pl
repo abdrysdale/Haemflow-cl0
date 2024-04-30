@@ -71,7 +71,7 @@ my @partitions = ('compute', 's_gpu_eng', 'accel_ai');
 my %part_accounts = (compute => 'scw1706', s_gpu_eng => 'scw1901', accel_ai => 'scw1901');
 my @fields = ('NodeName', 'CPUAlloc', 'CPUEfctv', 'State', 'Partitions');
 my @up_states = ('ALLOC', 'MIXED', 'IDLE');
-my %max_jobs = (compute => 25, accel_ai => 15, s_gpu_eng => 1);
+my %max_jobs = (compute => 25, accel_ai => 15, s_gpu_eng => 0);
 my %remain_jobs;
 my $accel_ai_max_cpus = 16;
 my $default_compute_cpus = 30;
