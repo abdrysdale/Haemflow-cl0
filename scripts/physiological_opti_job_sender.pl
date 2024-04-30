@@ -8,14 +8,16 @@ use warnings;
 use List::Util qw( min );
 use Getopt::Long;
 
-my $num_node = 30;
+my $num_node = 1;
 my $init_node = 0;
-my $max_node = 300;
+my $max_node = 1;
 my $delay = 3;
 my $cpus_per_task = 30;
 my $script_path = 'scripts/physiological_opti_sbatch.sh';
 my $add_to_queue = 0;
+my $timeout = 2880;  # (min) 1440 = 24hrs
 my $debug = 0;
+my $help = 0;
 
 GetOptions ('max=i' => \$max_node,
             'num=i' => \$num_node,
@@ -23,8 +25,33 @@ GetOptions ('max=i' => \$max_node,
             'delay=i' => \$delay,
             'script=s' => \$script_path,
             'cpus=i' => \$cpus_per_task,
+            'timeout=i' => \$timeout,
             'queue' => \$add_to_queue,
+            'help' => \$help,
             'debug' => \$debug);
+
+####################################
+# Displays help messages and exits #
+####################################
+
+if ($help) {
+  say "
+USAGE: job_sender.pl [OPTIONS]
+
+Options:
+
+-m, --max       Maximum number of nodes.
+-n, --num       Number of nodes for this job.
+-i, --init      Initial node number.
+-d, --delay     Delay between `sbatch` calls.
+-s, --script    Path to sbatch script.
+-t, --timeout   sbatch timeout in minutes.
+-q, --queue     If there are not enough cores available for the job request, queue the remainder.
+-d, --debug     Print the results instead of calling sbatch.
+-h, --help      Display this message.
+";
+  exit 1;
+}
 
 my $cmd = 'sbatch';
 if ($debug) {
@@ -207,13 +234,11 @@ for my $i ( 0 .. $#filtered_jobs ) {
 
   system($cmd, 
          "--export=ALL,START=$start_idx[$i],NUM=$job{free},TOTAL=$ttl_job_cpus",
-         "--cpus-per-task",
-         $job{free},
-         "--account",
-         $job{account},
-         "--partition",
-         $job{part},
+         "--cpus-per-task=$job{free}",
+         "--account=$job{account}",
+         "--partition=$job{part}",
          "--gres=gpu:0",
+         "--timeout=$timeout",
          $script_path);
 
   if ($job_num < $#filtered_jobs) {
