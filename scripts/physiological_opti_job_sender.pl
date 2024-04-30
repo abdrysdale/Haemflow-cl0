@@ -215,7 +215,7 @@ for my $i ( 0 .. $#filtered_jobs ) {
 
   $start_idx[$i] = $prev_idx;
 
-  $prev_idx +=  $job{free} + 1;
+  $prev_idx +=  $job{free};
 }
 
 
