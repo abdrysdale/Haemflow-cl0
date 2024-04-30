@@ -227,23 +227,37 @@ my $total_jobs = $#filtered_jobs + 1;
 print "Sending $total_jobs jobs with a ${delay}s delay.\n";
 print "Script:\t${script_path}\n\n";
 
+print "
+|-------|-------|---------------|---------------|
+| Job   | CPUS  | Partition     | ID            |
+|-------|-------|---------------|---------------|
+";
 for my $i ( 0 .. $#filtered_jobs ) {
   my $job_num = $i + 1;
   my %job = $filtered_jobs[$i]->%*;
-  print "Sending job $job_num/$total_jobs with $job{free} CPUs on $job{part} ::\t";
+  print "| $job_num\t| $job{free}\t| $job{part}\t|";
 
-  system($cmd, 
-         "--export=ALL,START=$start_idx[$i],NUM=$job{free},TOTAL=$ttl_job_cpus",
-         "--cpus-per-task=$job{free}",
-         "--account=$job{account}",
-         "--partition=$job{part}",
-         "--gres=gpu:0",
-         "--time=$timeout",
-         $script_path);
+  my @options = (
+                 "--export=ALL,START=$start_idx[$i],NUM=$job{free},TOTAL=$ttl_job_cpus",
+                 "--cpus-per-task=$job{free}",
+                 "--account=$job{account}",
+                 "--partition=$job{part}",
+                 "--gres=gpu:0",
+                 "--time=$timeout",
+                 $script_path,
+                );
+
+  my $id = "N/A\t";
+  unless ($debug) {
+    my $resp = qx/$cmd @options/;
+    my @response = split ' ', $resp;
+    $id = $response[-1];
+  }
+  print " $id\t|\n"; 
 
   if ($job_num < $#filtered_jobs) {
     sleep $delay;
   }
 }
 
-print "\nFinished!\n";
+say "|-------|-------|---------------|---------------|";
