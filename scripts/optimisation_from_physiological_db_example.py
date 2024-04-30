@@ -75,7 +75,7 @@ def main(num_workers=None, start=None, total=None, replace_table=False, budget=1
     num_cores = mp.cpu_count()
     num_workers = min(
         num_cores,
-        num_workers if num_workers is not None else num_coresr
+        num_workers if num_workers is not None else num_cores
     )
 
     start = start if start is not None else 0
@@ -96,7 +96,7 @@ def main(num_workers=None, start=None, total=None, replace_table=False, budget=1
     if total > 1:
         query = f"SELECT COALESCE(MAX(row_names)+1, 0) FROM {table}"
         num_rows = execute_sql_concurrently(db_path, query, fetchone=True)
-        
+
         min_row = int(start / total * num_rows)
         max_row = int((start + num_workers) / total * num_rows)
 
