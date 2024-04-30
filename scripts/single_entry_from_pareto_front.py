@@ -20,16 +20,25 @@ logger = logging.getLogger(__name__)
 
 def execute_sql_concurrently(
         db_path: str,
-        query: str,
+        query: Optional[str] = None,
+        dataframe: Optional[pd.DataFrame] = None,
+        df_table: Optional[str] = None,
+        commit: Optional[bool] = False,
         fetchone: Optional[bool] = False,
         max_tries: Optional[int] = -1,
         timeout: Optional[int] = 10,
-):
+        **kwargs,
+) -> tuple:
     """Executes an SQL command concurrently
+
+    All unknown arguments are passed to the pandas to_sql method on dataframe.
 
     Args:
         db_path (str) : Path to SQLite3 database.
-        query (str) : Query to execute.
+        query (str, optional) : Query to execute.
+        dataframe (pd.DataFrame, optional) : If present, will write a datafrom to sql.
+        df_table (str, optional) : Table to write to if dataframe is present.
+        commit (bool, optional) : If True, will perform a commit after the query.
         fetchone (bool, optional) : If True, will return only the first result.
                 Defaults to False.
         max_tries (int, optional) : Maximum number of retries for SQL connection
@@ -48,18 +57,33 @@ def execute_sql_concurrently(
         tries += 1
         try:
             con = sqlite3.connect(db_path, timeout=timeout)
-            cursor = con.cursor()
-            cursor.execute(query)
 
-            if fetchone:
-                result = cursor.fetchone()[0]
-            else:
-                result = cursor.fetchall()
+            if query is not None:
+                cursor = con.cursor()
+                cursor.execute(query)
+
+                if fetchone:
+                    result = cursor.fetchone()[0]
+                else:
+                    result = cursor.fetchall()
+
+                if commit:
+                    con.commit()
+
+            if dataframe is not None:
+                if df_table is None:
+                    logger.critical(
+                        "If using the dataframe keyword argument "
+                        "you must also supply the df_table keyword argument"
+                    )
+                    raise ValueError("df_table must be supplied if supplying a dataframe.")
+
+                result = dataframe.to_sql(df_table, con, **kwargs)
 
             con.close()
             db_opt_sucessful = True
 
-        except sqlite3.OperationalError:
+        except (sqlite3.OperationalError, pd.errors.DatabaseError):
             if tries >= max_tries and max_tries >= 0:
                 logger.critical(
                     "Maximum SQLite3 tries exceed "
@@ -88,7 +112,7 @@ def single_from_pareto(row, db_info):
 
     query = f"SELECT {all_cols_str} FROM {table} WHERE {id_col} == {row}"
     data = pd.DataFrame(
-        execute_sql_concurrently(db_path, query, max_tries=10),
+        execute_sql_concurrently(db_path, query=query),
         columns=all_cols,
     ).dropna()
     for i, col in enumerate(opt_cols.keys()):
@@ -105,12 +129,13 @@ def single_from_pareto(row, db_info):
         single_row[col] = sum(data[col] * data["w"])
     single_row[id_col] = row
 
-    con = sqlite3.connect(db_path, timeout=10)
-    pd.DataFrame(
+    df = pd.DataFrame(
         single_row,
         index=[0],
-    ).to_sql(new_table, con, if_exists='append')
-    con.close()
+    )
+    execute_sql_concurrently(
+        db_path, dataframe=df, df_table=new_table, if_exists='append',
+    )
 
     return True
 
@@ -142,7 +167,7 @@ def main(num_workers=None, start=None, total=None):
         f"Starting job {start} out of {total} with {num_workers} workers."
     )
 
-    db_path = "physiological.sqlite3"
+    db_path = "physiological.db"
     table = "lumped_model_outputs"
     new_table = "sv_rel"
 
@@ -172,7 +197,7 @@ def main(num_workers=None, start=None, total=None):
     )
 
     query = f"SELECT DISTINCT({id_col}) FROM {table}"
-    row_tuple = execute_sql_concurrently(db_path, query)
+    row_tuple = execute_sql_concurrently(db_path, query=query)
 
     if total > 1:
         min_idx = int(start / total * len(row_tuple))
@@ -201,6 +226,8 @@ def main(num_workers=None, start=None, total=None):
         'all_cols_str': all_cols_str,
     }
 
+    logger.info(f"{len(rows)} total rows to process.")
+
     # Single core #
     if num_workers <= 1:
         for row in tqdm(rows):
@@ -209,6 +236,7 @@ def main(num_workers=None, start=None, total=None):
     # Parallel #
     else:
         n = ceil(len(rows) / num_workers)
+        logger.info(f"{n} rows per worker.")
         args = list(
             zip(
                 [rows[i:i+n] for i in range(0, len(rows), n)],
