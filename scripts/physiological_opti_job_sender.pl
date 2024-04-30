@@ -22,7 +22,7 @@ my $help = 0;
 GetOptions ('max=i' => \$max_node,
             'num=i' => \$num_node,
             'init=i' => \$init_node,
-            'delay=i' => \$delay,
+            'wait=i' => \$delay,
             'script=s' => \$script_path,
             'cpus=i' => \$cpus_per_task,
             'time=i' => \$timeout,
@@ -43,7 +43,7 @@ Options:
 -m, --max       Maximum number of nodes.
 -n, --num       Number of nodes for this job.
 -i, --init      Initial node number.
--d, --delay     Delay between `sbatch` calls.
+-w, --wait      Wait time (s) between `sbatch` calls.
 -s, --script    Path to sbatch script.
 -t, --time      sbatch timeout in minutes.
 -q, --queue     If there are not enough cores available for the job request, queue the remainder.
