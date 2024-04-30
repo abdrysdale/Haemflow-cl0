@@ -25,7 +25,7 @@ GetOptions ('max=i' => \$max_node,
             'delay=i' => \$delay,
             'script=s' => \$script_path,
             'cpus=i' => \$cpus_per_task,
-            'timeout=i' => \$timeout,
+            'time=i' => \$timeout,
             'queue' => \$add_to_queue,
             'help' => \$help,
             'debug' => \$debug);
@@ -45,7 +45,7 @@ Options:
 -i, --init      Initial node number.
 -d, --delay     Delay between `sbatch` calls.
 -s, --script    Path to sbatch script.
--t, --timeout   sbatch timeout in minutes.
+-t, --time      sbatch timeout in minutes.
 -q, --queue     If there are not enough cores available for the job request, queue the remainder.
 -d, --debug     Print the results instead of calling sbatch.
 -h, --help      Display this message.
@@ -238,7 +238,7 @@ for my $i ( 0 .. $#filtered_jobs ) {
          "--account=$job{account}",
          "--partition=$job{part}",
          "--gres=gpu:0",
-         "--timeout=$timeout",
+         "--time=$timeout",
          $script_path);
 
   if ($job_num < $#filtered_jobs) {
