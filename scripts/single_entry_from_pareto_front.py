@@ -79,13 +79,13 @@ def execute_sql_concurrently(
                 for q in query:
                     cursor.execute(q)
 
+                    if commit:
+                        con.commit()
+
                 if fetchone:
                     result = cursor.fetchone()[0]
                 else:
                     result = cursor.fetchall()
-
-                if commit:
-                    con.commit()
 
             if dataframe is not None:
                 if df_table is None:
@@ -108,6 +108,7 @@ def execute_sql_concurrently(
                     "Maximum SQLite3 tries exceed "
                     f"({tries}/{max_tries})"
                 )
+                logger.debug(f"Last query: {q}")
                 raise
 
     return result
@@ -164,8 +165,12 @@ def single_from_pareto(row, db_info, use_tmp=False):
     return True
 
 
-def single_from_pareto_loop(args, checkpoint=10):
-    rows, db_info = args
+def single_from_pareto_loop(args):
+    rows, db_info, kwargs = args
+
+    checkpoint = kwargs.get("checkpoint", 1000)
+    use_tmp = kwargs.get("use_tmp", False)
+
     logger.debug(f"Starting pareto front reduction on {len(rows)} rows ...")
     t0 = time.time()
     t_per_row = -1
@@ -188,7 +193,7 @@ def single_from_pareto_loop(args, checkpoint=10):
                 f"Worker {mp.current_process().pid} completed : {i} rows"
             )
 
-        single_from_pareto(row, db_info, use_tmp=True)
+        single_from_pareto(row, db_info, use_tmp=use_tmp)
     return mp.current_process().pid
 
 
@@ -214,6 +219,8 @@ def main(num_workers=None, start=None, total=None):
     db_path = "physiological.db"
     table = "lumped_model_outputs"
     new_table = "sv_rel"
+    use_tmp = True
+    checkpoint = 1000
 
     id_col = "row_names"
 
@@ -234,7 +241,9 @@ def main(num_workers=None, start=None, total=None):
     ]
 
     var_col = "sv"
-    all_cols = [*opt_cols.keys(), *opt_cols.values(), *static_cols, var_col]
+    all_cols = [
+        id_col, *opt_cols.keys(), *opt_cols.values(), var_col, *static_cols,
+    ]
     all_cols_str = (
         ', '.join(f"\"{s.strip(string.punctuation)}\""
                   for s in str(all_cols).split())
@@ -242,10 +251,7 @@ def main(num_workers=None, start=None, total=None):
 
     query = f"SELECT DISTINCT({id_col}) FROM {table}"
     row_tuple = execute_sql_concurrently(db_path, query=query)
-    logger.debug(
-        f"Database has {len(row_tuple)} rows.\n"
-        f"First row:\n{row_tuple[0]}"
-    )
+    logger.debug(f"Database has {len(row_tuple)} rows")
 
     if total > 1:
         min_idx = int(start / total * len(row_tuple))
@@ -289,6 +295,9 @@ def main(num_workers=None, start=None, total=None):
             zip(
                 [rows[i:i+n] for i in range(0, len(rows), n)],
                 itertools.repeat(db_info),
+                itertools.repeat(
+                    {"use_tmp": use_tmp, "checkpoint": checkpoint}
+                ),
             )
         )
         logger.debug(f"Zipped args format:\n{args[0]}")
@@ -297,20 +306,35 @@ def main(num_workers=None, start=None, total=None):
             # Performs the weighting in parallel
             ids = p.map(single_from_pareto_loop, args)
 
+            col_dtype_str = ",".join([
+                f"'{c}' REAL" if c != id_col else f"'{c}' INTEGER PRIMARY KEY"
+                for c in all_cols
+            ])
+
             # Joins the temporary databases together.
-            for pid in ids:
-                logger.debug(f"Adding database from worker {pid} to {db_path}")
-                pid_db = f"{db_path}.{pid}"
+            if use_tmp:
+                for pid in ids:
+                    logger.debug(
+                        f"Adding database from worker {pid} to {db_path}"
+                    )
+                    pid_db = f"{db_path}.{pid}"
 
-                query = (
-                    f"ATTACH '{pid_db}' AS pid_db",
-                    f"INSERT INTO {new_table} SELECT * FROM pid_db.{new_table}"
-                )
-                execute_sql_concurrently(
-                    db_path, query=query, commit=True,
-                )
+                    query = (
+                        f"ATTACH '{pid_db}' AS db",
+                        (
+                            f"CREATE TABLE IF NOT EXISTS {new_table} ("
+                            f"{col_dtype_str}) WITHOUT ROWID"
+                        ),
+                        (
+                            f"INSERT INTO {new_table} ({all_cols_str})"
+                            f"SELECT {all_cols_str} FROM db.{new_table}"
+                        ),
+                    )
+                    execute_sql_concurrently(
+                        db_path, query=query, commit=True, max_tries=10,
+                    )
 
-                os.remove(pid_db)
+                    os.remove(pid_db)
 
     logger.info(f"Completed! Processed {len(rows)} rows.")
 
