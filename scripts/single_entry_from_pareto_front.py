@@ -134,7 +134,11 @@ def single_from_pareto(row, db_info):
         index=[0],
     )
     execute_sql_concurrently(
-        db_path, dataframe=df, df_table=new_table, if_exists='append',
+        db_path,
+        dataframe=df,
+        df_table=new_table,
+        if_exists='append',
+        index=False,
     )
 
     return True
@@ -198,6 +202,10 @@ def main(num_workers=None, start=None, total=None):
 
     query = f"SELECT DISTINCT({id_col}) FROM {table}"
     row_tuple = execute_sql_concurrently(db_path, query=query)
+    logger.debug(
+        f"Database has {len(row_tuple)} rows.\n"
+        f"First row:\n{row_tuple[0]}"
+    )
 
     if total > 1:
         min_idx = int(start / total * len(row_tuple))
