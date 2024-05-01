@@ -2,14 +2,16 @@
 """Converts database entries contain Pareto front into a single value"""
 
 # Python imports
+import os
+import time
 import sqlite3
 import string
 import argparse
-from typing import Optional
 import logging
 import multiprocessing as mp
-from math import ceil
 import itertools
+from math import ceil
+from typing import Optional, Union
 
 # Module imports
 from tqdm import tqdm
@@ -20,13 +22,14 @@ logger = logging.getLogger(__name__)
 
 def execute_sql_concurrently(
         db_path: str,
-        query: Optional[str] = None,
+        query: Union[str, list, None] = None,
         dataframe: Optional[pd.DataFrame] = None,
         df_table: Optional[str] = None,
         commit: Optional[bool] = False,
         fetchone: Optional[bool] = False,
         max_tries: Optional[int] = -1,
         timeout: Optional[int] = 10,
+        use_tmp: Optional[bool] = False,
         **kwargs,
 ) -> tuple:
     """Executes an SQL command concurrently
@@ -36,15 +39,21 @@ def execute_sql_concurrently(
     Args:
         db_path (str) : Path to SQLite3 database.
         query (str, optional) : Query to execute.
-        dataframe (pd.DataFrame, optional) : If present, will write a datafrom to sql.
+        dataframe (pd.DataFrame, optional) : If present, will write a datafrom
+                to sql.
         df_table (str, optional) : Table to write to if dataframe is present.
-        commit (bool, optional) : If True, will perform a commit after the query.
+        commit (bool, optional) : If True, will perform a commit after the
+                query.
         fetchone (bool, optional) : If True, will return only the first result.
                 Defaults to False.
-        max_tries (int, optional) : Maximum number of retries for SQL connection
+        max_tries (int, optional) : Maximum number of retries for SQL
+                connection.
                 If <0, will perpetually retry. Defaults to -1.
         timeout (int, optional) : Timeout for SQLite connection in seconds.
-                Defaults to 10
+                Defaults to 10.
+        use_tmp (bool, optional) : If True, will write to a process specific
+                temporary database with the name db_path.PID where PID is the
+                process ID. Defaults to False.
 
     Returns:
         result (list) : Result from the SQL query.
@@ -52,6 +61,9 @@ def execute_sql_concurrently(
 
     db_opt_sucessful = False
     tries = -1
+
+    if use_tmp:
+        db_path = f"{db_path}.{mp.current_process().pid}"
 
     while not db_opt_sucessful:
         tries += 1
@@ -98,7 +110,7 @@ def loss(a, b):
     return abs(a - b) / b
 
 
-def single_from_pareto(row, db_info):
+def single_from_pareto(row, db_info, use_tmp=False):
 
     new_table = db_info['new_table']
     db_path = db_info['db_path']
@@ -137,6 +149,7 @@ def single_from_pareto(row, db_info):
         db_path,
         dataframe=df,
         df_table=new_table,
+        use_tmp=use_tmp,
         if_exists='append',
         index=False,
     )
@@ -144,12 +157,32 @@ def single_from_pareto(row, db_info):
     return True
 
 
-def single_from_pareto_loop(args):
+def single_from_pareto_loop(args, checkpoint=10):
     rows, db_info = args
     logger.debug(f"Starting pareto front reduction on {len(rows)} rows ...")
-    for row in rows:
-        single_from_pareto(row, db_info)
-    return True
+    t0 = time.time()
+    t_per_row = -1
+    for i, row in enumerate(rows):
+        if i % checkpoint == 0 and i != 0:
+            t1 = time.time()
+            dt = t1 - t0
+
+            # If the time per changes by more than 10% redisplay the predicted
+            # time remaining.
+            if abs((dt / i) - t_per_row) / t_per_row >= 0.1 or i == checkpoint:
+                t_per_row = (dt / i)
+                remaining_t = t_per_row * (len(rows) - i) / 60
+                logger.debug(
+                    f"Worker {mp.current_process().pid} here, "
+                    f"should be finished in {remaining_t:.3f} mins"
+                )
+
+            logger.debug(
+                f"Worker {mp.current_process().pid} completed : {i} rows"
+            )
+
+        single_from_pareto(row, db_info, use_tmp=True)
+    return mp.current_process().pid
 
 
 def main(num_workers=None, start=None, total=None):
@@ -254,7 +287,23 @@ def main(num_workers=None, start=None, total=None):
         logger.debug(f"Zipped args format:\n{args[0]}")
 
         with mp.Pool(num_workers) as p:
-            p.map(single_from_pareto_loop, args)
+            # Performs the weighting in parallel
+            ids = p.map(single_from_pareto_loop, args)
+
+            # Joins the temporary databases together.
+            for pid in ids:
+                logger.debug(f"Adding database from worker {pid} to {db_path}")
+                pid_db = f"{db_path}.{pid}"
+
+                query = (
+                    f"ATTACH '{pid_db}' AS pid_db",
+                    f"INSERT INTO {new_table} SELECT * FROM pid_db.{new_table}"
+                )
+                execute_sql_concurrently(
+                    db_path, query=query, commit=True,
+                )
+
+                os.remove(pid_db)
 
     logger.info(f"Completed! Processed {len(rows)} rows.")
 
