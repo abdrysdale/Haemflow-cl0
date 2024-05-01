@@ -201,8 +201,9 @@ Hence the degrees of freedom and the non-central parameter for the non-central t
   con <- dbConnect(RSQLite::SQLite(), dbname=dbname)
   df <- dbGetQuery(con, paste("SELECT * FROM", table))
 
-  # Formats names
+  # Formats data
   df$index <- c()
+
   df.names <- c()
   for (i in seq(1, ncol(df))) {
     var <- strsplit(names(df)[i], ".", fixed=TRUE)[[1]]
@@ -213,18 +214,20 @@ Hence the degrees of freedom and the non-central parameter for the non-central t
   }
   names(df) <- df.names
 
+  df$sex <- as.factor(df$sex)
+
   summary(df)
 #+end_src
 
 #+RESULTS:
-| Min.   :0.3848 | Min.   :136.7 | Min.   :18.00 | Min.   :0.0000 | Min.   :0.02144 | Min.   :0.08967 | Min.   :0.2437 | Min.   :0.2866 | Min.   : 13.77 | Min.   : 87.18 | Min.   : 85.06 | Min.   : 58.66 | Min.   : 57.82 | Min.   :     1 |
-| 1st Qu.:0.9499 | 1st Qu.:158.3 | 1st Qu.:34.00 | 1st Qu.:0.0000 | 1st Qu.:0.05294 | 1st Qu.:0.22139 | 1st Qu.:0.6016 | 1st Qu.:0.7075 | 1st Qu.: 34.17 | 1st Qu.:116.49 | 1st Qu.:116.33 | 1st Qu.: 72.57 | 1st Qu.: 73.48 | 1st Qu.:165126 |
-| Median :1.1250 | Median :165.5 | Median :53.00 | Median :0.0000 | Median :0.06270 | Median :0.26220 | Median :0.7125 | Median :0.8379 | Median : 47.76 | Median :149.18 | Median :146.09 | Median : 87.21 | Median : 87.67 | Median :218489 |
-| Mean   :1.1254 | Mean   :165.4 | Mean   :55.74 | Mean   :0.4947 | Mean   :0.06272 | Mean   :0.26229 | Mean   :0.7127 | Mean   :0.8382 | Mean   : 56.89 | Mean   :144.86 | Mean   :141.24 | Mean   : 89.53 | Mean   : 89.00 | Mean   :214913 |
-| 3rd Qu.:1.2931 | 3rd Qu.:172.8 | 3rd Qu.:77.00 | 3rd Qu.:1.0000 | 3rd Qu.:0.07207 | 3rd Qu.:0.30139 | 3rd Qu.:0.8190 | 3rd Qu.:0.9631 | 3rd Qu.: 72.37 | 3rd Qu.:166.67 | 3rd Qu.:161.09 | 3rd Qu.:104.45 | 3rd Qu.:102.82 | 3rd Qu.:312156 |
-| Max.   :1.9488 | Max.   :195.3 | Max.   :99.00 | Max.   :1.0000 | Max.   :0.10861 | Max.   :0.45420 | Max.   :1.2342 | Max.   :1.4514 | Max.   :199.66 | Max.   :218.79 | Max.   :218.32 | Max.   :133.85 | Max.   :133.61 | Max.   :349098 |
+| Min.   :0.3848 | Min.   :136.7 | Min.   :18.00 | 0:947 | Min.   :0.02144 | Min.   :0.08967 | Min.   :0.2437 | Min.   :0.2866 | Min.   : 13.77 | Min.   : 87.18 | Min.   : 85.06 | Min.   : 58.66 | Min.   : 57.82 | Min.   :     1 |
+| 1st Qu.:0.9499 | 1st Qu.:158.3 | 1st Qu.:34.00 | 1:927 | 1st Qu.:0.05294 | 1st Qu.:0.22139 | 1st Qu.:0.6016 | 1st Qu.:0.7075 | 1st Qu.: 34.17 | 1st Qu.:116.49 | 1st Qu.:116.33 | 1st Qu.: 72.57 | 1st Qu.: 73.48 | 1st Qu.:165126 |
+| Median :1.1250 | Median :165.5 | Median :53.00 |       | Median :0.06270 | Median :0.26220 | Median :0.7125 | Median :0.8379 | Median : 47.76 | Median :149.18 | Median :146.09 | Median : 87.21 | Median : 87.67 | Median :218489 |
+| Mean   :1.1254 | Mean   :165.4 | Mean   :55.74 |       | Mean   :0.06272 | Mean   :0.26229 | Mean   :0.7127 | Mean   :0.8382 | Mean   : 56.89 | Mean   :144.86 | Mean   :141.24 | Mean   : 89.53 | Mean   : 89.00 | Mean   :214913 |
+| 3rd Qu.:1.2931 | 3rd Qu.:172.8 | 3rd Qu.:77.00 |       | 3rd Qu.:0.07207 | 3rd Qu.:0.30139 | 3rd Qu.:0.8190 | 3rd Qu.:0.9631 | 3rd Qu.: 72.37 | 3rd Qu.:166.67 | 3rd Qu.:161.09 | 3rd Qu.:104.45 | 3rd Qu.:102.82 | 3rd Qu.:312156 |
+| Max.   :1.9488 | Max.   :195.3 | Max.   :99.00 |       | Max.   :0.10861 | Max.   :0.45420 | Max.   :1.2342 | Max.   :1.4514 | Max.   :199.66 | Max.   :218.79 | Max.   :218.32 | Max.   :133.85 | Max.   :133.61 | Max.   :349098 |
 
-#+begin_src R :results none
+#+begin_src R
   num.vals <- nrow(df)
 
   d.comparison <- data.frame(norm=rnorm(num.vals, sv.mu, sv.sd),
@@ -241,6 +244,11 @@ Hence the degrees of freedom and the non-central parameter for the non-central t
     labs(x="Stroke Volume (mL)", y="Density", fill="Distribution")
 
   save.plot("sv_comparison_w_simulation", plot)
+
+  print(paste("Data has", num.vals, "rows"))
 #+end_src
+
+#+RESULTS:
+: Data has 1874 rows
 
 [[file:~/PhD/Projects/0D-closed-loop/imgs/sv_comparison_w_simulation.png]]

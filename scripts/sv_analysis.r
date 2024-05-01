@@ -120,8 +120,9 @@ table <- "sv_rel"
 con <- dbConnect(RSQLite::SQLite(), dbname=dbname)
 df <- dbGetQuery(con, paste("SELECT * FROM", table))
 
-# Formats names
+# Formats data
 df$index <- c()
+
 df.names <- c()
 for (i in seq(1, ncol(df))) {
   var <- strsplit(names(df)[i], ".", fixed=TRUE)[[1]]
@@ -131,6 +132,8 @@ for (i in seq(1, ncol(df))) {
   df.names[i] <- var[length(var)]
 }
 names(df) <- df.names
+
+df$sex <- as.factor(df$sex)
 
 summary(df)
 
@@ -150,3 +153,5 @@ plot <- ggplot(data=d.comparison, aes(x=sim)) +
   labs(x="Stroke Volume (mL)", y="Density", fill="Distribution")
 
 save.plot("sv_comparison_w_simulation", plot)
+
+print(paste("Data has", num.vals, "rows"))
