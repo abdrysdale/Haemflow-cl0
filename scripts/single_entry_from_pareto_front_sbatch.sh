@@ -29,4 +29,4 @@ module load singularity/3.8.5
 
 srun singularity exec --bind "$(pwd)":/app cl0.sif \
 python3 scripts/single_entry_from_pareto_front.py \
---start ${START} --total ${TOTAL} --num_workers ${NUM} --log WARNING
+--start ${START} --total ${TOTAL} --num_workers ${NUM} --log DEBUG
