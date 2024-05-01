@@ -72,7 +72,12 @@ def execute_sql_concurrently(
 
             if query is not None:
                 cursor = con.cursor()
-                cursor.execute(query)
+
+                if not isinstance(query, (list, tuple)):
+                    query = [query]
+
+                for q in query:
+                    cursor.execute(q)
 
                 if fetchone:
                     result = cursor.fetchone()[0]
@@ -88,7 +93,9 @@ def execute_sql_concurrently(
                         "If using the dataframe keyword argument "
                         "you must also supply the df_table keyword argument"
                     )
-                    raise ValueError("df_table must be supplied if supplying a dataframe.")
+                    raise ValueError(
+                        "df_table must be supplied if supplying a dataframe."
+                    )
 
                 result = dataframe.to_sql(df_table, con, **kwargs)
 
