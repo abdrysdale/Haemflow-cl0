@@ -220,12 +220,12 @@ Hence the degrees of freedom and the non-central parameter for the non-central t
 #+end_src
 
 #+RESULTS:
-| Min.   :0.3848 | Min.   :136.7 | Min.   :18.00 | 0:947 | Min.   :0.02144 | Min.   :0.08967 | Min.   :0.2437 | Min.   :0.2866 | Min.   : 13.77 | Min.   : 87.18 | Min.   : 85.06 | Min.   : 58.66 | Min.   : 57.82 | Min.   :     1 |
-| 1st Qu.:0.9499 | 1st Qu.:158.3 | 1st Qu.:34.00 | 1:927 | 1st Qu.:0.05294 | 1st Qu.:0.22139 | 1st Qu.:0.6016 | 1st Qu.:0.7075 | 1st Qu.: 34.17 | 1st Qu.:116.49 | 1st Qu.:116.33 | 1st Qu.: 72.57 | 1st Qu.: 73.48 | 1st Qu.:165126 |
-| Median :1.1250 | Median :165.5 | Median :53.00 |       | Median :0.06270 | Median :0.26220 | Median :0.7125 | Median :0.8379 | Median : 47.76 | Median :149.18 | Median :146.09 | Median : 87.21 | Median : 87.67 | Median :218489 |
-| Mean   :1.1254 | Mean   :165.4 | Mean   :55.74 |       | Mean   :0.06272 | Mean   :0.26229 | Mean   :0.7127 | Mean   :0.8382 | Mean   : 56.89 | Mean   :144.86 | Mean   :141.24 | Mean   : 89.53 | Mean   : 89.00 | Mean   :214913 |
-| 3rd Qu.:1.2931 | 3rd Qu.:172.8 | 3rd Qu.:77.00 |       | 3rd Qu.:0.07207 | 3rd Qu.:0.30139 | 3rd Qu.:0.8190 | 3rd Qu.:0.9631 | 3rd Qu.: 72.37 | 3rd Qu.:166.67 | 3rd Qu.:161.09 | 3rd Qu.:104.45 | 3rd Qu.:102.82 | 3rd Qu.:312156 |
-| Max.   :1.9488 | Max.   :195.3 | Max.   :99.00 |       | Max.   :0.10861 | Max.   :0.45420 | Max.   :1.2342 | Max.   :1.4514 | Max.   :199.66 | Max.   :218.79 | Max.   :218.32 | Max.   :133.85 | Max.   :133.61 | Max.   :349098 |
+| Min.   :     1 | Min.   : 84.11 | Min.   : 56.14 | Min.   : 86.33 | Min.   : 58.66 | Min.   :  8.313 | Min.   :0.2874 | Min.   :121.8 | Min.   :18.00 | 0:100937 | Min.   :0.01602 | Min.   :0.06697 | Min.   :0.1820 | Min.   :0.2140 |
+| 1st Qu.: 56998 | 1st Qu.:117.07 | 1st Qu.: 73.68 | 1st Qu.:117.26 | 1st Qu.: 72.82 | 1st Qu.: 33.568 | 1st Qu.:0.9268 | 1st Qu.:158.3 | 1st Qu.:34.00 | 1:100153 | 1st Qu.:0.05165 | 1st Qu.:0.21600 | 1st Qu.:0.5870 | 1st Qu.:0.6903 |
+| Median :192018 | Median :146.63 | Median : 87.40 | Median :149.38 | Median : 86.97 | Median : 48.140 | Median :1.1026 | Median :165.2 | Median :53.00 |          | Median :0.06145 | Median :0.25697 | Median :0.6983 | Median :0.8212 |
+| Mean   :180898 | Mean   :141.74 | Mean   : 89.12 | Mean   :145.22 | Mean   : 89.51 | Mean   : 56.121 | Mean   :1.1130 | Mean   :165.4 | Mean   :54.97 |          | Mean   :0.06203 | Mean   :0.25939 | Mean   :0.7049 | Mean   :0.8289 |
+| 3rd Qu.:245640 | 3rd Qu.:160.87 | 3rd Qu.:103.17 | 3rd Qu.:166.46 | 3rd Qu.:104.58 | 3rd Qu.: 72.753 | 3rd Qu.:1.2880 | 3rd Qu.:172.4 | 3rd Qu.:75.00 |          | 3rd Qu.:0.07179 | 3rd Qu.:0.30019 | 3rd Qu.:0.8157 | 3rd Qu.:0.9593 |
+| Max.   :349167 | Max.   :236.44 | Max.   :135.90 | Max.   :223.01 | Max.   :133.95 | Max.   :277.860 | Max.   :1.9562 | Max.   :208.7 | Max.   :99.00 |          | Max.   :0.10902 | Max.   :0.45592 | Max.   :1.2389 | Max.   :1.4569 |
 
 #+begin_src R
   num.vals <- nrow(df)
@@ -249,6 +249,6 @@ Hence the degrees of freedom and the non-central parameter for the non-central t
 #+end_src
 
 #+RESULTS:
-: Data has 1874 rows
+: Data has 201090 rows
 
 [[file:~/PhD/Projects/0D-closed-loop/imgs/sv_comparison_w_simulation.png]]
