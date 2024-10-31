@@ -4,6 +4,8 @@ This a 0D cardiovascular model for the venous and arterial systems based of Kora
 
 The model is implemented in Fortran but supplied with a Python wrapper.
 
+![circuit diagram of the model](0d_closed_loop.svg)
+
 ## Notable Changes From Korakianitis and Shi
 
 - Able to supply heart elastance curves based on ECG timings.
