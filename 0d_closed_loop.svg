@@ -34,7 +34,7 @@
      inkscape:window-x="0"
      inkscape:window-y="19"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="layer2"
      showgrid="false" /><defs
      id="defs1"><marker
        style="overflow:visible"
@@ -54,6 +54,17 @@
          style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
          d="M 5.77,0 -2.88,5 V -5 Z"
          id="path135" /></marker></defs><g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer 0"><rect
+       style="fill:#ffffff;stroke:none;stroke-width:0.264999;fill-opacity:1"
+       id="rect1"
+       width="297.45877"
+       height="209.14977"
+       x="0.099703215"
+       y="0.6820724"
+       rx="1.427756"
+       ry="1.427756" /></g><g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"><g
