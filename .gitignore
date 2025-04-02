@@ -7,3 +7,10 @@
 /output.csv
 *.hdf5
 *.sif
+*.db*
+*.sqlite3
+*.tar*
+*.tex
+*.png
+*.svg
+*.csv
