@@ -1,0 +1,63 @@
+#+title: 0D Closed Loop Analysis
+#+author: Alex Drysdale
+#+date: 2024/02/06
+#+PROPERTY: header-args:R :session *R:0D-closed-loop*
+#+PROPERTY: cache yes
+#+PROPERTY: exports both
+#+PROPERTY: noweb yes
+#+PROPERTY: tangle yes
+#+PROPERTY: results output
+#+PROPERTY: res 1000
+
+#+begin_src R :results none
+  # Loads the relavent R libraries
+  library(ggplot2)
+  library(gridExtra)
+
+  setwd("~/PhD/Projects/0D-closed-loop")
+#+end_src
+
+#+begin_src R :results none
+  # Controls the font size for all of the plots
+  plot.text.size <- 15
+  plot.theme <- theme(text=element_text(size=plot.text.size), #change font size of all text
+                      axis.text=element_text(size=plot.text.size), #change font size of axis text
+                      axis.title=element_text(size=plot.text.size), #change font size of axis titles
+                      plot.title=element_text(size=plot.text.size), #change font size of plot title
+                      legend.text=element_text(size=plot.text.size), #change font size of legend text
+                      legend.title=element_text(size=plot.text.size)) #change font size of legend title 
+  point.size <- 5
+  line.size <- 2
+#+end_src
+
+* Elastance curves
+
+#+begin_src R
+  d <- read.csv("output.csv")
+  summary(d)
+#+end_src
+
+#+RESULTS:
+| Min.   :  0.000 | Min.   : -3.616 | Min.   : 70.84 | Min.   :  0.000 | Min.   :-152.5 | Min.   :-198.482 | Min.   : 89.58 | Min.   :  0.00 | Min.   : 75.70 | Min.   : 75.32 | Min.   :22.17 | Min.   :59.60 | Min.   :59.42 | Min.   :31.63 | Min.   :278.6 | Min.   :140.1 | Min.   :140.3 | Min.   : 84.97 | Min.   :0.0000 | Min.   :0.0000 | Min.   :0.0000 | Min.   :0.0000 | Min.   : 26.91 | Min.   :26.64 | Min.   : 8.919 | Min.   :10.97 | Min.   :0.1000 | Min.   :0.1500 | Min.   :0.1000 | Min.   :0.1500 | Min.   :0.0000 |
+| 1st Qu.:  0.000 | 1st Qu.:  4.078 | 1st Qu.: 83.61 | 1st Qu.:  0.000 | 1st Qu.:   0.0 | 1st Qu.:   4.290 | 1st Qu.: 96.57 | 1st Qu.:  0.00 | 1st Qu.: 85.60 | 1st Qu.: 85.40 | 1st Qu.:22.39 | 1st Qu.:64.24 | 1st Qu.:63.94 | 1st Qu.:32.12 | 1st Qu.:319.4 | 1st Qu.:207.3 | 1st Qu.:179.2 | 1st Qu.: 99.79 | 1st Qu.:0.0000 | 1st Qu.:0.0000 | 1st Qu.:0.0000 | 1st Qu.:0.0000 | 1st Qu.: 31.78 | 1st Qu.:31.16 | 1st Qu.:13.443 | 1st Qu.:12.89 | 1st Qu.:0.1000 | 1st Qu.:0.1500 | 1st Qu.:0.1000 | 1st Qu.:0.1500 | 1st Qu.:0.2247 |
+| Median :  0.000 | Median :  5.039 | Median :102.34 | Median :  3.841 | Median :   0.0 | Median :   4.901 | Median :116.86 | Median : 28.27 | Median : 99.32 | Median : 99.11 | Median :22.55 | Median :68.72 | Median :68.50 | Median :32.37 | Median :330.7 | Median :214.2 | Median :193.9 | Median :110.34 | Median :0.0000 | Median :0.4330 | Median :0.0000 | Median :0.0216 | Median : 34.94 | Median :31.83 | Median :17.233 | Median :14.11 | Median :0.1000 | Median :0.1500 | Median :0.1000 | Median :0.1500 | Median :0.4493 |
+| Mean   :104.999 | Mean   :104.924 | Mean   :103.43 | Mean   :111.069 | Mean   : 114.1 | Mean   : 114.311 | Mean   :118.43 | Mean   :108.69 | Mean   :100.22 | Mean   :100.00 | Mean   :22.53 | Mean   :69.42 | Mean   :69.19 | Mean   :32.48 | Mean   :333.5 | Mean   :206.9 | Mean   :197.1 | Mean   :108.53 | Mean   :0.2372 | Mean   :0.3583 | Mean   :0.2256 | Mean   :0.3126 | Mean   : 58.45 | Mean   :31.81 | Mean   :33.939 | Mean   :14.35 | Mean   :0.1845 | Mean   :0.1579 | Mean   :0.2733 | Mean   :0.1579 | Mean   :0.4493 |
+| 3rd Qu.:  8.967 | 3rd Qu.: 15.158 | 3rd Qu.:122.03 | 3rd Qu.: 98.094 | 3rd Qu.:   0.0 | 3rd Qu.:  39.687 | 3rd Qu.:135.72 | 3rd Qu.: 52.05 | 3rd Qu.:114.14 | 3rd Qu.:113.93 | 3rd Qu.:22.66 | 3rd Qu.:74.79 | 3rd Qu.:74.66 | 3rd Qu.:32.67 | 3rd Qu.:365.1 | 3rd Qu.:216.9 | 3rd Qu.:230.7 | 3rd Qu.:116.27 | 3rd Qu.:0.1259 | 3rd Qu.:0.5827 | 3rd Qu.:0.1500 | 3rd Qu.:0.6725 | 3rd Qu.: 83.68 | 3rd Qu.:32.26 | 3rd Qu.:63.087 | 3rd Qu.:15.51 | 3rd Qu.:0.2430 | 3rd Qu.:0.1500 | 3rd Qu.:0.3932 | 3rd Qu.:0.1500 | 3rd Qu.:0.6740 |
+| Max.   :549.757 | Max.   :528.569 | Max.   :141.41 | Max.   :902.427 | Max.   :1003.5 | Max.   : 967.302 | Max.   :152.26 | Max.   :841.15 | Max.   :127.97 | Max.   :128.41 | Max.   :22.92 | Max.   :79.73 | Max.   :79.64 | Max.   :34.56 | Max.   :373.0 | Max.   :221.2 | Max.   :244.8 | Max.   :130.03 | Max.   :1.0000 | Max.   :1.0000 | Max.   :1.0000 | Max.   :1.0000 | Max.   :140.26 | Max.   :38.82 | Max.   :84.476 | Max.   :20.28 | Max.   :0.5000 | Max.   :0.2500 | Max.   :0.9200 | Max.   :0.2500 | Max.   :0.8986 |
+
+#+begin_src R :results none
+  plot <- ggplot(data=d, aes(x=Time..s., y=Left.Ventricular.Elastance, col="LV")) +
+    geom_line() +
+    geom_line(aes(y=Right.Ventricular.Elastance, col="RV")) +
+    geom_line(aes(y=Left.Atrial.Elastance, col="LA")) +
+    geom_line(aes(y=Right.Atrial.Elastance, col="RA")) +
+    labs(x="Time (s)", y="Elastance", col="Chamber", title="Elastance curves") +
+    plot.theme
+
+  svg("analysis/figures/elastance.svg")
+  print(plot)
+  dev.off()
+#+end_src
+
+[[file:figures/elastance.svg]]
+

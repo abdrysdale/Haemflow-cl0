@@ -1,0 +1,433 @@
+#+title: Heat Response 0D Closed Loop Analysis
+#+author: Alex Drysdale
+#+date: <2024-03-22 Fri>
+
+#+PROPERTY: header-args:R :session *R:0D-closed-loop* :colnames yes :cache yes :exports results
+#+PROPERTY: results output
+#+PROPERTY: res 1000
+
+#+begin_src R :results none
+  # Loads libraries
+  library(ggplot2)
+  library(gridExtra)
+  library(DBI)
+
+  # Connects to database
+  setwd("~/PhD/Projects/0D-closed-loop")
+  db_path <- "../heat_response/data/exercise/processed_data.sqlite3"
+  con <- dbConnect(RSQLite::SQLite(), dbname=db_path)
+
+  # Controls the font size for all of the plots
+  plot.text.size <- 30
+  plot.theme <- theme(text=element_text(size=plot.text.size), #change font size of all text
+                      axis.text=element_text(size=plot.text.size), #change font size of axis text
+                      axis.title=element_text(size=plot.text.size), #change font size of axis titles
+                      plot.title=element_text(size=plot.text.size), #change font size of plot title
+                      legend.text=element_text(size=plot.text.size), #change font size of legend text
+                      legend.title=element_text(size=plot.text.size)) #change font size of legend title 
+  point.size <- 5
+  line.size <- 3
+#+end_src
+
+* Visualising the fitted model parameters
+
+#+begin_src R
+  df <- dbGetQuery(con, "SELECT id, temp FROM Model_Outputs_BA")
+  df$id <- as.factor(df$id)
+  df$temp <- as.factor(df$temp)
+
+  trials <- unique(df)
+  trials <- trials[order(trials$id),]
+
+  print(trials)
+#+end_src
+
+#+RESULTS[4087dff706f3429345f212cac4f3e90860ac08f3]:
+| id | temp |
+|----+------|
+| P1 | COLD |
+| P1 | TEMP |
+| P1 | HEAT |
+| P2 | COLD |
+| P2 | TEMP |
+| P2 | HEAT |
+| P3 | COLD |
+| P3 | TEMP |
+| P3 | HEAT |
+| P4 | COLD |
+| P4 | TEMP |
+| P4 | HEAT |
+| P5 | HEAT |
+
+#+begin_src R :results none
+  # Gets the best value for each trial
+  get.t.axis <- function(t, beg.end=FALSE){
+    if (beg.end) {
+      return(c(min(t, na.rm=TRUE), max(df$t, na.rm=TRUE)))
+    }
+    return(unique(t)/60)  # Converts from seconds to minutes
+  }
+
+  beg.end <- TRUE
+  before.after <- ordered(c("Before", "After"), levels=c("Before", "After"))
+
+  df.rtn <- data.frame()
+  for (i in 1:nrow(trials)) {
+    pid <- trials[i, ]$id
+    tem <- trials[i, ]$temp
+
+    df <- dbGetQuery(con,
+                     paste(
+                       "SELECT * FROM Model_Outputs WHERE id = '", pid, 
+                       "' AND temp = '", tem, "'",
+                       sep=""))
+
+    t.axis <- get.t.axis(df$t, beg.end=beg.end)
+
+    for (j in 1:length(t.axis)) {
+      df.t <- subset(df, t == t.axis[j])
+
+      min.idx <- which.min(df.t$loss)
+      if (beg.end) {
+        d.tmp <- df.t[min.idx,]
+
+        t.val <- before.after[j]
+        d.tmp$t <- t.val
+
+        df.rtn <- rbind(df.rtn, d.tmp)
+      } else {
+        df.rtn <- rbind(df.rtn, df.t[min.idx,])
+      }
+    }
+  }
+
+  df.rtn$id <- as.factor(df.rtn$id)
+  df.rtn$temp <- as.factor(df.rtn$temp)
+#+end_src
+
+** Displays fitted parameters
+:PROPERTIES:
+:ORG-IMAGE-ACTUAL-WIDTH: 600
+:END:
+
+
+#+begin_src R :results none
+  if (beg.end) {
+    for (var in c("r", "c", "v", "e")) {
+      y.name <- paste("generic_params.", var, "_scale", sep="")
+      plot <- ggplot(data=df.rtn, 
+                     aes(x=t, y=!! rlang::sym(y.name), col=temp, lty=id, group=paste(id, temp))) +
+        geom_line() +
+        labs(x='Before/After trial', y='Scale', col='', lty='Temp',
+             title=paste(toupper(var), 'Scale Before and After Trial' ))
+
+      ggsave(paste("analysis/figures/fitted_params_before_and_after", var, ".png", sep="_"),
+             plot=plot)
+    }
+  } else {
+    for (i in 1:nrow(trials)) {
+      pid <- trials[i, ]$id
+      tem <- trials[i, ]$temp
+
+      df <- subset(df.rtn, id == pid & temp == tem)
+
+
+      plot <- ggplot(data=df, aes(x=t, y=generic_params.r_scale, col='R')) +
+        geom_line() +
+        geom_line(aes(y=generic_params.c_scale, col='C')) +
+        geom_line(aes(y=generic_params.v_scale, col='V')) +
+        geom_line(aes(y=generic_params.e_scale, col='E')) +
+        labs(x='Time (mins)', y='Scale', col="", title=paste(pid, tem))
+
+      ggsave(paste("analysis/figures/fitted_params", pid, tem, ".png", sep="_"), plot=plot)
+    }
+  }
+#+end_src
+
+
+[[file:figures/fitted_params_P1_COLD_.png]]
+
+[[file:figures/fitted_params_P1_TEMP_.png]]
+
+[[file:figures/fitted_params_P2_HEAT_.png]]
+
+[[file:figures/fitted_params_P4_TEMP_.png]]
+
+[[file:figures/fitted_params_P4_HEAT_.png]]
+
+[[file:figures/fitted_params_before_and_after_r_.png]]
+
+[[file:figures/fitted_params_before_and_after_c_.png]]
+
+[[file:figures/fitted_params_before_and_after_e_.png]]
+
+[[file:figures/fitted_params_before_and_after_v_.png]]
+
+* Calculating the fitted parameter uncertainty from the Pareto Frontier
+
+#+begin_src R :results none
+  ci.from.pareto.front <- function(vals, loss, ci=0.95) {
+    df.pf <- na.omit(data.frame(x=vals, y=loss))
+    vals <- df.pf$x
+    loss <- df.pf$y
+
+    s.idx <- sort(vals, index.return=TRUE)$ix
+
+    pd_loss <- 1 / loss
+
+    x.axis <- seq(min(vals), max(vals), length=1000)
+    pdf <- approx(vals[s.idx], pd_loss[s.idx], x.axis)
+
+    pd_interp <- pdf$y
+    pd_interp <- pd_interp / sum(pd_interp)
+    pd_interp[pd_interp < 0] <- 0
+    best.idx <- which.max(pd_interp)
+
+    # Gets half the confidence interval and sees at what inveral contains the confidence interval
+    hi <- ci/2
+    lb.idx <- best.idx + 1 - which.min(abs(cumsum(
+                               pd_interp[seq(best.idx, 1)] - pd_interp[best.idx]/2) - hi))
+    ub.idx <- best.idx - 1 + which.min(abs(cumsum(
+                               pd_interp[seq(best.idx, length(pd_interp))]
+                               - pd_interp[best.idx]/2) - hi))
+
+    lb.idx <- max(lb.idx, 1)
+    ub.idx <- min(ub.idx, length(x.axis))
+    lb <- x.axis[lb.idx]
+    ub <- x.axis[ub.idx]
+
+    return(c(lb, ub))
+  }
+
+  df.rtn <- data.frame()
+  for (i in 1:nrow(trials)) {
+    pid <- trials[i, ]$id
+    tem <- trials[i, ]$temp
+
+    df <- dbGetQuery(con,
+                     paste(
+                       "SELECT * FROM Model_Outputs WHERE id = '", pid, 
+                       "' AND temp = '", tem, "'",
+                       sep=""))
+
+    t.axis <- get.t.axis(df$t, beg.end=beg.end)
+
+    for (j in 1:length(t.axis)) {
+      df.t <- subset(df, t == t.axis[j])
+      min.idx <- which.min(df.t$loss)
+
+      df.tmp <- df.t[min.idx,]
+      sys.bounds <- ci.from.pareto.front(df.t$sys, df.t$loss)
+      df.tmp$sys.lb <- sys.bounds[1]
+      df.tmp$sys.ub <- sys.bounds[2]
+
+      dia.bounds <- ci.from.pareto.front(df.t$dia, df.t$loss)
+      df.tmp$dia.lb <- dia.bounds[1]
+      df.tmp$dia.ub <- dia.bounds[2]
+
+      sv.bounds <- ci.from.pareto.front(df.t$sv, df.t$loss)
+      df.tmp$sv.lb <- sv.bounds[1]
+      df.tmp$sv.ub <- sv.bounds[2]
+
+      r.bounds <- ci.from.pareto.front(df.t$generic_params.r_scale, df.t$loss)
+      df.tmp$r_scale.lb <- r.bounds[1]
+      df.tmp$r_scale.ub <- r.bounds[2]
+
+      c.bounds <- ci.from.pareto.front(df.t$generic_params.c_scale, df.t$loss)
+      df.tmp$c_scale.lb <- c.bounds[1]
+      df.tmp$c_scale.ub <- c.bounds[2]
+
+      v.bounds <- ci.from.pareto.front(df.t$generic_params.v_scale, df.t$loss)
+      df.tmp$v_scale.lb <- v.bounds[1]
+      df.tmp$v_scale.ub <- v.bounds[2]
+
+      e.bounds <- ci.from.pareto.front(df.t$generic_params.e_scale, df.t$loss)
+      df.tmp$e_scale.lb <- e.bounds[1]
+      df.tmp$e_scale.ub <- e.bounds[2]
+
+      k_dil.bounds <- ci.from.pareto.front(df.t$thermal_system.k_dil, df.t$loss)
+      df.tmp$k_dil.lb <- k_dil.bounds[1]
+      df.tmp$k_dil.ub <- k_dil.bounds[2]
+
+      k_con.bounds <- ci.from.pareto.front(df.t$thermal_system.k_con, df.t$loss)
+      df.tmp$k_con.lb <- k_con.bounds[1]
+      df.tmp$k_con.ub <- k_con.bounds[2]
+
+      if (beg.end) {
+        t.val <- before.after[j]
+        df.tmp$t <- t.val
+      }
+
+      df.rtn <- rbind(df.rtn, df.tmp)
+    }
+  }
+
+  df.rtn$id <- as.factor(df.rtn$id)
+  df.rtn$temp <- as.factor(df.rtn$temp)
+#+end_src
+
+
+** Visualising the results
+:PROPERTIES:
+:ORG-IMAGE-ACTUAL-WIDTH: 600
+:END:
+
+
+#+begin_src R :results none
+  for (i in 1:nrow(trials)) {
+    pid <- trials[i, ]$id
+    tem <- trials[i, ]$temp
+
+    df <- subset(df.rtn, id == pid & temp == tem)
+
+    # Time axis label
+    if (beg.end) {
+      x.lab <- "Before/After trial"
+    } else {
+      x.lab <- "Time (mins)"
+    }
+
+    ### Resistance and complaince ####
+    df.tmp <- data.frame(t=df$t, m=df$generic_params.r_scale,
+                         lb=df$r_scale.lb, ub=df$r_scale.ub, type='R')
+    df.tmp <- rbind(df.tmp, 
+                    data.frame(t=df$t, m=df$generic_params.c_scale, 
+                               lb=df$c_scale.lb, ub=df$c_scale.ub, type='C'))
+    df.tmp$type <- as.factor(df.tmp$type)
+
+
+    plot.rc <- ggplot(data=df.tmp, aes(x=t, y=m, fill=type, ymin=lb, ymax=ub, col=type, group=type)) +
+      geom_ribbon(alpha=0.2) +
+      geom_line(lty=2)
+
+    if (!beg.end) {
+      plot.rc <- plot.rc +
+        labs(x=x.lab, y='Scale', title=paste(pid, tem, "resistance and compliance scaling"))
+
+      ggsave(paste("analysis/figures/fitted_params_with_pf_ci", pid, tem, ".png", sep="_"), 
+             plot=plot.rc)
+    }
+
+    ### Volume and elastance ###
+    df.tmp <- data.frame(t=df$t, m=df$generic_params.v_scale,
+                         lb=df$v_scale.lb, ub=df$v_scale.ub, type='V')
+    df.tmp <- rbind(df.tmp, 
+                    data.frame(t=df$t, m=df$generic_params.e_scale, 
+                               lb=df$e_scale.lb, ub=df$e_scale.ub, type='E'))
+    df.tmp$type <- as.factor(df.tmp$type)
+
+    if (!beg.end) {
+      plot.ve <- ggplot(data=df.tmp, aes(x=t, y=m, fill=type, ymin=lb, ymax=ub, col=type, group=type)) +
+        geom_ribbon(alpha=0.2) +
+        geom_line(lty=2) +
+        labs(x=x.lab, y='Scale', title=paste(pid, tem, "heart volume and elastance scaling"))
+
+      ggsave(paste("analysis/figures/fitted_params_with_pf_ci_heart", pid, tem, ".png", sep="_"),
+             plot=plot.rc)
+    } else {
+      plot.scale <- plot.rc +
+        geom_ribbon(data=df.tmp, alpha=0.2,
+                    aes(x=t, y=m, fill=type, ymin=lb, ymax=ub, col=type, group=type)) +
+        geom_line(data=df.tmp, lty=2,
+                  aes(x=t, y=m, col=type, group=type))
+    }
+
+    ### k_con and k_dil ###
+    df.tmp <- data.frame(t=df$t, m=df$thermal_system.k_dil,
+                         lb=df$k_dil.lb, ub=df$k_dil.ub, type='k_dil')
+    df.tmp <- rbind(df.tmp, 
+                    data.frame(t=df$t, m=df$thermal_system.k_con * 100,
+                               lb=df$k_con.lb * 100, ub=df$k_con.ub * 100, type='k_con'))
+    df.tmp$type <- as.factor(df.tmp$type)
+
+    plot.therm <- ggplot(data=df.tmp, aes(x=t, y=m, fill=type, ymin=lb, ymax=ub, col=type, group=type)) +
+      geom_ribbon(alpha=0.2) +
+      geom_line(lty=2) +
+      labs(x=x.lab, y='Value', title=paste(pid, tem, "thermal regulation"))
+
+    if (!beg.end) {
+      ggsave(paste("analysis/figures/fitted_params_with_pf_ci_thermal", pid, tem, ".png", sep="_"), 
+             plot=plot.therm)
+    }
+
+    ### Blood Pressure ###
+    df.tmp <- data.frame(t=df$t, m=df$sys,
+                         lb=df$sys.lb, ub=df$sys.ub, type='sys')
+    df.tmp <- rbind(df.tmp, 
+                    data.frame(t=df$t, m=df$dia,
+                               lb=df$dia.lb, ub=df$dia.ub, type='dia'))
+    df.tmp <- rbind(df.tmp,
+                    data.frame(t=df$t, m=df$sv,
+                               lb=df$sv.lb, ub=df$sv.ub, type='sv'))
+    df.tmp$type <- as.factor(df.tmp$type)
+
+    plot.bp <- ggplot(data=df.tmp, aes(x=t, y=m, fill=type, ymin=lb, ymax=ub, col=type, group=type)) +
+      geom_ribbon(alpha=0.2) +
+      geom_line(lty=2) +
+      labs(x=x.lab, y='Pressure (mmHg)/Stroke Voume (mL)', title=paste(pid, tem, "blood pressure and stroke volume"))
+
+    if (!beg.end) {
+      ggsave(paste("analysis/figures/fitted_params_with_pf_ci_bp", pid, tem, ".png", sep="_"), 
+             plot=plot.bp)
+    }
+
+    ### Stroke Volume ###
+    df.tmp <- data.frame(t=df$t, m=df$sv,
+                         lb=df$sv.lb, ub=df$sv.ub, type='sv')
+    df.tmp$type <- as.factor(df.tmp$type)
+
+    plot.sv <- ggplot(data=df.tmp, aes(x=t, y=m, fill=type, ymin=lb, ymax=ub, col=type, group=type)) +
+      geom_ribbon(alpha=0.2) +
+      geom_line(lty=2) +
+      labs(x=x.lab, y='Pressure (mmHg)', title=paste(pid, tem, "stroke volume"))
+
+    if (!beg.end) {
+      ggsave(paste("analysis/figures/fitted_params_with_pf_ci_sv", pid, tem, ".png", sep="_"), 
+           plot=plot.sv)
+    }
+
+    # Plots graphs together for beginning and end
+    if (beg.end) {
+      plot.scale <- plot.scale +
+        labs(x=x.lab, y="Scale",
+             title="Scaling parameters with Pareto frontier uncertainty")
+
+      plot.all <- grid.arrange(plot.scale, plot.therm, plot.bp, ncol=1)
+
+      ggsave(paste("analysis/figures/fitted_params_with_pf_ci_all", pid, tem, ".png", sep="_"), 
+           plot=plot.all)
+    }
+  }
+#+end_src
+
+[[file:figures/fitted_params_with_pf_ci_P1_COLD_.png]]
+[[file:figures/fitted_params_with_pf_ci_P1_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_P2_HEAT_.png]]
+[[file:figures/fitted_params_with_pf_ci_P4_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_P4_HEAT_.png]]
+
+[[file:figures/fitted_params_with_pf_ci_heart_P1_COLD_.png]]
+[[file:figures/fitted_params_with_pf_ci_heart_P1_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_heart_P2_HEAT_.png]]
+[[file:figures/fitted_params_with_pf_ci_heart_P4_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_heart_P4_HEAT_.png]]
+
+[[file:figures/fitted_params_with_pf_ci_thermal_P1_COLD_.png]]
+[[file:figures/fitted_params_with_pf_ci_thermal_P1_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_thermal_P2_HEAT_.png]]
+[[file:figures/fitted_params_with_pf_ci_thermal_P4_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_thermal_P4_HEAT_.png]]
+
+[[file:figures/fitted_params_with_pf_ci_bp_P1_COLD_.png]]
+[[file:figures/fitted_params_with_pf_ci_bp_P1_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_bp_P2_HEAT_.png]]
+[[file:figures/fitted_params_with_pf_ci_bp_P4_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_bp_P4_HEAT_.png]]
+
+[[file:figures/fitted_params_with_pf_ci_all_P1_COLD_.png]]
+[[file:figures/fitted_params_with_pf_ci_all_P1_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_all_P2_HEAT_.png]]
+[[file:figures/fitted_params_with_pf_ci_all_P4_TEMP_.png]]
+[[file:figures/fitted_params_with_pf_ci_all_P4_HEAT_.png]]
+
+
