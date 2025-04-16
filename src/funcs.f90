@@ -213,7 +213,7 @@ contains
          t3, &
          t4, &
          therm) result (soln_all)
-         
+
       ! Declares input variables
       integer, intent(in) :: nstep, ncycle, rk
       real(dp), intent(in) :: T, pini_sys, pini_pulm, rho
@@ -239,14 +239,13 @@ contains
       real(dp), allocatable, dimension(:) :: ELV, ELA, ERV, ERA
       type (heart_elastance) :: elast, elast_half
       real(dp) :: current_sol(22)
-      real(dp), allocatable :: h_pres(:, :) 
+      real(dp), allocatable :: h_pres(:, :)
       real(dp), allocatable :: t_axis(:)
       real(dp), dimension(22) :: k1, k2, k3, k4
       real(dp), allocatable :: sol(:, :)
 
       ! Declare output variables
       real(dp), allocatable :: soln_all(:, :)
-
 
       !!! Initialisation !!!
 

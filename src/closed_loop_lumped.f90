@@ -18,7 +18,7 @@ subroutine closed_loop_lumped(nstep, &
      t1, t2, t3, t4, &
      q_sk_basal, k_dil, T_cr, T_cr_ref, k_con, T_sk, T_sk_ref, &
      sol_out) bind(c, name='solve_system')
-  
+
   use iso_c_binding
   use funcs
   use data_types
@@ -53,7 +53,7 @@ subroutine closed_loop_lumped(nstep, &
   type (thermal_system) :: therm
 
   real(c_double) :: scale_Emax, scale_EmaxLV, scale_EmaxRV
-  
+
   real(dp) :: sol(31, nstep)
   real(c_double), intent(out) :: sol_out(31, nstep)
 

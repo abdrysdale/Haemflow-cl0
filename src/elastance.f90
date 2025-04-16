@@ -72,7 +72,6 @@ contains
         end if
     end function calc_elastance
 
-    
     ! Heart volume calculations taken from:
     ! "Size matters! Impact of age, sex, height, and weight on the normal heart size"
     ! by Pfaffenberger, Stefan and Bartko, Philipp and Graf, Alexandra and Pernicka, Elisabeth 
@@ -84,25 +83,25 @@ contains
     subroutine update_heart_vol(heart, height_in, weight_in, age_in, sex_in)
       ! Calculates the heart volume based of height, weight age and sex
       ! The units for each variable are as follows
-      ! 
+      !
       ! | Variable | Unit  |
       ! |----------|-------|
       ! | Height   | cm    |
       ! | Weight   | kg    |
       ! | Age      | Years |
-      ! 
+      !
       ! Sex is 0 for a male and 1 for a female.
-      ! 
+      !
       ! Limitations taken from the study:
       !
       ! > Our data have been collected in a single center in central Europe,
       ! > thus the ethnic background of our study population was mainly
       ! > whites.  No Asian or black individuals were studied. Thus,
       ! > conclusions concerning other ethnic populations are limited.
-      ! 
+      !
       ! Additionally, the paper did not discuss trans or non-binary people so this is
       ! another limitation of the study.
-      ! 
+      !
       ! Conculusions taken from the study:
       !
       ! > The present work shows that sex, age, and body size affect the
